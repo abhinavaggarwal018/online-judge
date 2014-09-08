@@ -6,7 +6,7 @@ import javax.swing.JFrame;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JPanel;
-import java.awt.EventQueue;
+
 import java.awt.*;
 
 import org.eclipse.swt.widgets.MessageBox;
@@ -57,16 +57,19 @@ public class ServerGUI {
 	public class tableData
 	{
 		public int category;
+		public String Password;
 		public String teamName;
 		public int successful;
 		public int[] score = new int[7];
 		public int[] attempt = new int[7];
 		public int time;
+		public boolean loggedIn;
 	
 		tableData()
 		{
 			category=1;
 			teamName="test";
+			Password="";
 			for(int i=0;i<7;i++)
 			{
 				score[i]=0;
@@ -74,9 +77,9 @@ public class ServerGUI {
 			}
 			successful=0;
 			time=0;
+			loggedIn=false;
 		}
 	};
-
 
 	final static String TEAMNAME = "Team Name";
 	final static String CATEGORY = "Category";
@@ -91,7 +94,7 @@ public class ServerGUI {
 	final static String DONE = "Successful Submission";
 	
 	final static String PROBLEMS = "PROBLEMS";
-	final static String SUBMIT = "SUBMIT";
+	final static String CREATELOGIN = "CREATELOGIN";
 	final static String LEADERBOARD = "LEADERBOARD";
 	final static String RULES = "RULES";
 	final static String LOGIN = "LOGIN";
@@ -111,7 +114,7 @@ public class ServerGUI {
 	private JLabel lblProbF;
 	private JLabel lblProbG;
 	private JLabel lblRules;
-	private JLabel lblSubmit;
+	private JLabel lblCreateLogin;
 	private JLabel lblLeaderBoard;
 	private JTextPane Rules;
 	private JTextPane Problems;
@@ -119,9 +122,7 @@ public class ServerGUI {
 	private JScrollPane PaneRules;
 	private JScrollPane PaneProblems;
 	private JScrollPane PaneLeaderBoard;
-	private JPanel PanelSubmit;
 	private JPanel PanelLogin;
-	private JLabel lblSubmitPane;
 	private JLabel lblPassword;
 	private JLabel lblTeamName;	
 	private JLabel lblLogin;
@@ -135,19 +136,37 @@ public class ServerGUI {
 	private JMenuBar menuBar;
 	private JMenu file;
 	private JMenuItem edit;
-	private JTextField FileID;
-	private JComboBox QuestionID;
-	private JLabel lblQuestion;
-	private JLabel lblSelectFile;
-	private JButton btnBrowse;
-	private JButton btnSubmit;
 	private JTable table;
 	private JTextField IPServer;
 	private JTextField PortServer;	
+	private JTextArea txtrProblemName;
+	private JTextArea txtrProblemDescription;
+	private JTextArea txtrInputFormat;
+	private JTextArea txtrOutputFormat;
+	private JTextArea txtrSampleInput;
+	private JTextArea txtrSampleOutput;
+	private JTextArea txtrConstraintsDescription;
+	private JButton btnSaveData;
+	private JTextArea txtrRules;
+	private JButton btnSaveRules;
+	private JButton btnSaveLeaderBoard;
+	private JButton btnCreateLogin; 
+	private JPanel panel_1 ;
+	private JPanel panel;
 	
 	private Vector<tableData> board = new Vector<tableData>();
-
-	
+	private static String[] ProbDesc;
+	private static String[] InputFormat;
+	private static String[] OutputFormat;
+	private static String[] SampleInput;
+	private static String[] SampleOutput;
+	private static String[] Constraints;
+	private static String[] ProbName;
+	private static String RulesStr;
+	private static int selectedProblem;
+	private JTable tableCreateLogin;
+	private JScrollPane PaneCreateLogin;
+	private JButton btnSave;
 	/**
 	 * @wbp.nonvisual location=112,399
 	 */
@@ -225,6 +244,57 @@ public class ServerGUI {
 		Problems.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 15));
 		PaneProblems.setViewportView(Problems);
 		
+		panel = new JPanel();
+		panel.setPreferredSize(new Dimension(600, 10));
+		panel.setMinimumSize(new Dimension(300, 10));
+		PaneProblems.setRowHeaderView(panel);
+		panel.setLayout(null);
+		
+		txtrProblemName = new JTextArea();
+		txtrProblemName.setText("Problem Name");
+		txtrProblemName.setBounds(10, 0, 580, 22);
+		panel.add(txtrProblemName);
+		
+		txtrInputFormat = new JTextArea();
+		txtrInputFormat.setWrapStyleWord(true);
+		txtrInputFormat.setText("Input Format");
+		txtrInputFormat.setBounds(10, 130, 580, 74);
+		panel.add(txtrInputFormat);
+		
+		txtrProblemDescription = new JTextArea();
+		txtrProblemDescription.setText("Problem Description");
+		txtrProblemDescription.setBounds(10, 21, 580, 108);
+		panel.add(txtrProblemDescription);
+		
+		txtrOutputFormat = new JTextArea();
+		txtrOutputFormat.setText("Output Format");
+		txtrOutputFormat.setBounds(10, 201, 580, 74);
+		panel.add(txtrOutputFormat);
+		
+		txtrSampleInput = new JTextArea();
+		txtrSampleInput.setText("Sample Input");
+		txtrSampleInput.setBounds(10, 274, 580, 74);
+		panel.add(txtrSampleInput);
+		
+		txtrSampleOutput = new JTextArea();
+		txtrSampleOutput.setText("Sample Output");
+		txtrSampleOutput.setBounds(10, 346, 580, 74);
+		panel.add(txtrSampleOutput);
+		
+		txtrConstraintsDescription = new JTextArea();
+		txtrConstraintsDescription.setText("Constraints Descriptiom");
+		txtrConstraintsDescription.setBounds(10, 418, 580, 64);
+		panel.add(txtrConstraintsDescription);
+		
+		btnSaveData = new JButton("Save Data");
+		btnSaveData.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				saveChanges();
+			}
+		});
+		btnSaveData.setBounds(241, 479, 89, 22);
+		panel.add(btnSaveData);
+		
 //		JScrollPane PaneRules;
 		PaneRules = new JScrollPane();
 		PanelDisplay.add(PaneRules, RULES);
@@ -235,6 +305,26 @@ public class ServerGUI {
 		Rules.setEditable(false);
 		PaneRules.setViewportView(Rules);
 		
+		panel_1 = new JPanel();
+		panel_1.setMinimumSize(new Dimension(600, 10));
+		panel_1.setPreferredSize(new Dimension(600, 10));
+		PaneRules.setRowHeaderView(panel_1);
+		panel_1.setLayout(null);
+		
+		txtrRules = new JTextArea();
+		txtrRules.setBounds(10, 5, 580, 445);
+		txtrRules.setText("");
+		panel_1.add(txtrRules);
+		
+		btnSaveRules = new JButton("Save ");
+		btnSaveRules.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				RulesStr = txtrRules.getText(); 
+			}
+		});
+		btnSaveRules.setBounds(240, 478, 89, 23);
+		panel_1.add(btnSaveRules);
+		
 //		JScrollPane PaneLeaderBoard;
 		PaneLeaderBoard = new JScrollPane();
 		PaneLeaderBoard.setViewportBorder(new EmptyBorder(0, 0, 0, 0));
@@ -243,58 +333,37 @@ public class ServerGUI {
 		
 		table = new JTable();
 		table.setFont(new Font("Tahoma", Font.PLAIN, 12));
-		table.setEnabled(false);
 		table.setBorder(new EmptyBorder(25, 25, 25, 15));
 		PaneLeaderBoard.setViewportView(table);
 		
-//		JPanel PanelSubmit;
-		PanelSubmit = new JPanel();
-		PanelSubmit.setLayout(null);
-		PanelDisplay.add(PanelSubmit, SUBMIT);
-		
-//		JLabel lblSubmitPane;
-		lblSubmitPane = new JLabel("Submit");
-		lblSubmitPane.setHorizontalAlignment(SwingConstants.CENTER);
-		lblSubmitPane.setFont(new Font("Tahoma", Font.BOLD, 17));
-		lblSubmitPane.setBounds(10, 32, 1192, 41);
-		PanelSubmit.add(lblSubmitPane);
-		
-		lblSelectFile = new JLabel("Select File");
-		lblSelectFile.setBounds(378, 113, 63, 24);
-		PanelSubmit.add(lblSelectFile);
-		
-		FileID = new JTextField();
-		FileID.setBounds(451, 115, 326, 20);
-		PanelSubmit.add(FileID);
-		FileID.setColumns(10);
-		
-		btnBrowse = new JButton("Browse");
-		btnBrowse.addActionListener(new ActionListener() {
+		btnSaveLeaderBoard = new JButton("Save");
+		btnSaveLeaderBoard.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				browseFile();
+				saveLeaderBoard();
 			}
 		});
-		btnBrowse.setBounds(803, 114, 89, 23);
-		PanelSubmit.add(btnBrowse);
+		PaneLeaderBoard.setRowHeaderView(btnSaveLeaderBoard);
 		
-		lblQuestion = new JLabel("Question");
-		lblQuestion.setBounds(378, 171, 63, 24);
-		PanelSubmit.add(lblQuestion);
+		PaneCreateLogin = new JScrollPane();
+		PaneCreateLogin.setViewportBorder(new EmptyBorder(0, 0, 0, 0));
+		PaneCreateLogin.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 15));
+		PanelDisplay.add(PaneCreateLogin, CREATELOGIN);
+		
+		tableCreateLogin = new JTable();
+		tableCreateLogin.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		tableCreateLogin.setBorder(new EmptyBorder(25, 25, 25, 15));
+		PaneCreateLogin.setViewportView(tableCreateLogin);
+		
+		btnSave = new JButton("Save");
+		btnSave.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				saveCreateLogin();
+			}
+		});
+		
+		PaneCreateLogin.setRowHeaderView(btnSave);
 		
 		String[] items = {PROBLEMA,PROBLEMB,PROBLEMC,PROBLEMD,PROBLEME,PROBLEMF,PROBLEMG};
-		QuestionID = new JComboBox(items);
-		QuestionID.setBounds(451, 173, 326, 20);
-		
-		PanelSubmit.add(QuestionID);
-		
-		btnSubmit = new JButton("Submit");
-		btnSubmit.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				submitFile();
-			}
-		});
-		btnSubmit.setBounds(572, 250, 89, 23);
-		PanelSubmit.add(btnSubmit);
 		
 //		JFileChooser Input;
 		Input = new JFileChooser();
@@ -355,6 +424,10 @@ public class ServerGUI {
 		lblNote2.setBounds(182, 176, 810, 14);
 		PanelLogin.add(lblNote2);
 		
+		btnCreateLogin = new JButton("Create Login!");
+		btnCreateLogin.setBounds(693, 357, 103, 23);
+		PanelLogin.add(btnCreateLogin);
+
 //		JPanel Panel; 
 		Panel = new JPanel();
 		Panel.setBackground(new Color(255, 250, 205));
@@ -371,6 +444,7 @@ public class ServerGUI {
 		lblProbA.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				selectedProblem=0;
 				ShowProblem('A');
 			}
 		});
@@ -392,6 +466,7 @@ public class ServerGUI {
 		lblProbB.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				selectedProblem=1;
 				ShowProblem('B');
 			}
 		});
@@ -412,6 +487,7 @@ public class ServerGUI {
 		lblProbC.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				selectedProblem=2;
 				ShowProblem('C');
 			}
 		});
@@ -432,6 +508,7 @@ public class ServerGUI {
 		lblProbD.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				selectedProblem=3;
 				ShowProblem('D');
 			}
 		});
@@ -452,6 +529,7 @@ public class ServerGUI {
 		lblProbE.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				selectedProblem=4;
 				ShowProblem('E');
 			}
 		});
@@ -472,6 +550,7 @@ public class ServerGUI {
 		lblProbF.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				selectedProblem=5;
 				ShowProblem('F');
 			}
 		});
@@ -492,6 +571,7 @@ public class ServerGUI {
 		lblProbG.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				selectedProblem=6;
 				ShowProblem('G');
 			}
 		});
@@ -528,26 +608,25 @@ public class ServerGUI {
 		Panel.add(lblRules);
 	
 //		JLabel lblSubmit;
-		lblSubmit = new JLabel("Submit");
-		lblSubmit.addMouseListener(new MouseAdapter() {
+		lblCreateLogin = new JLabel("Create Login");
+		lblCreateLogin.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				FileID.setText("");
-				submitClicked();
+				createLoginClicked();
 			}
 		});
 		
-		lblSubmit.setFont(new Font("Tahoma", Font.BOLD, 14));
-		lblSubmit.setCursor(new Cursor(Cursor.HAND_CURSOR));
-		lblSubmit.setForeground(new Color(0,0,255));
-		lblSubmit.setHorizontalAlignment(SwingConstants.CENTER);
-		lblSubmit.setMinimumSize(new Dimension(100, 100));
-		lblSubmit.setMaximumSize(new Dimension(150, 50));
-		lblSubmit.setBorder(null);
-		lblSubmit.setSize(new Dimension(50, 70));
-		lblSubmit.setPreferredSize(new Dimension(150, 0));
-		lblSubmit.setLocation(new Point(10, 10));		
-		Panel.add(lblSubmit);
+		lblCreateLogin.setFont(new Font("Tahoma", Font.BOLD, 14));
+		lblCreateLogin.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		lblCreateLogin.setForeground(new Color(0,0,255));
+		lblCreateLogin.setHorizontalAlignment(SwingConstants.CENTER);
+		lblCreateLogin.setMinimumSize(new Dimension(100, 100));
+		lblCreateLogin.setMaximumSize(new Dimension(150, 50));
+		lblCreateLogin.setBorder(null);
+		lblCreateLogin.setSize(new Dimension(50, 70));
+		lblCreateLogin.setPreferredSize(new Dimension(150, 0));
+		lblCreateLogin.setLocation(new Point(10, 10));		
+		Panel.add(lblCreateLogin);
 		
 //		JLabel lblLeaderboard;
 		lblLeaderBoard = new JLabel("LeaderBoard");
@@ -599,9 +678,91 @@ public class ServerGUI {
 		
 		IPServer = new JTextField();
 		PortServer = new JTextField();		
+
+		ProbName = new String[7];
+		ProbDesc = new String[7];
+		InputFormat = new String[7];
+		OutputFormat = new String[7];
+		SampleInput = new String[7];
+		SampleOutput = new String[7];
+		Constraints = new String[7];
+		RulesStr = new String();
 		
 		displayLogin();
 	}
+
+	protected void saveCreateLogin() {
+		try
+		{
+			for(int i=0;i<table.getRowCount();i++)
+			{
+				board.elementAt(i).teamName = (String) tableCreateLogin.getValueAt(i, 0);
+				board.elementAt(i).Password = (String) tableCreateLogin.getValueAt(i, 1);
+				board.elementAt(i).category = Integer.parseInt((String) tableCreateLogin.getValueAt(i, 2));			
+			}
+			
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+	}
+
+	protected void saveLeaderBoard() {
+		try
+		{
+			for(int i=0;i<table.getRowCount();i++)
+			{
+				board.elementAt(i).teamName = (String) table.getValueAt(i, 0);
+				board.elementAt(i).category = Integer.parseInt((String) table.getValueAt(i, 1));
+				
+				for(int j=0;j<7;j++)
+				{
+		
+					String str1 = (String) table.getValueAt(i, 2+j);
+//					System.out.println(str1+"END");
+					
+					int ind;
+					
+					for(ind=0;ind<str1.length();ind++)
+					{
+						if(str1.charAt(ind)> '9' || str1.charAt(ind) <'0')
+							break;
+					}
+
+					board.elementAt(i).score[j] = Integer.parseInt(str1.substring(0, ind));
+
+					for(;ind<str1.length();ind++)
+					{
+						if(str1.charAt(ind)<= '9' && str1.charAt(ind) >='0')
+							break;
+					}
+					
+					board.elementAt(i).attempt[j] = Integer.parseInt(str1.substring(ind,str1.length()-1));
+					//str[i][2+j] = String.valueOf(board.elementAt(i).score[j]) + "\n   (" + String.valueOf(board.elementAt(i).attempt[j]) + ")";
+
+				}
+
+				board.elementAt(i).successful = Integer.parseInt((String) table.getValueAt(i, 9));
+				board.elementAt(i).time = Integer.parseInt((String) table.getValueAt(i, 10));
+
+			}
+			
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+
+	protected void saveChanges() {
+		
+		ProbName[selectedProblem] = txtrProblemName.getText();
+		ProbDesc[selectedProblem] = txtrProblemDescription.getText();
+		InputFormat[selectedProblem] = txtrInputFormat.getText();
+		OutputFormat[selectedProblem] = txtrOutputFormat.getText();
+		SampleInput[selectedProblem] = txtrSampleInput.getText();
+		SampleOutput[selectedProblem] = txtrSampleOutput.getText();
+		Constraints[selectedProblem] = txtrConstraintsDescription.getText();
+	}
+
 	protected void showLeaderBoard() {
 
 		String[] columns = {TEAMNAME,CATEGORY,PROBLEMA,PROBLEMB,PROBLEMC,PROBLEMD,PROBLEME,PROBLEMF,PROBLEMG,DONE,TIME};
@@ -617,7 +778,6 @@ public class ServerGUI {
 	}
 
 	private String[][] getLeaderData() {
-		fillData();
 		
 		String[][] str = new String[board.size()][11];
 		
@@ -642,9 +802,6 @@ public class ServerGUI {
 	{
 		//TODO
 		
-		board.addElement(new tableData());
-		board.addElement(new tableData());
-		board.addElement(new tableData());
 		return;
 	}
 
@@ -660,7 +817,7 @@ public class ServerGUI {
 			lblProbF.setVisible(true);
 			lblProbG.setVisible(true);
 			lblLeaderBoard.setVisible(true);
-			lblSubmit.setVisible(true);
+			lblCreateLogin.setVisible(true);
 			lblRules.setVisible(true);
 			
 			showRules();
@@ -685,35 +842,92 @@ public class ServerGUI {
 		lblProbF.setVisible(false);
 		lblProbG.setVisible(false);
 		lblLeaderBoard.setVisible(false);
-		lblSubmit.setVisible(false);
+		lblCreateLogin.setVisible(false);
 		lblRules.setVisible(false);
 		
 		CardLayout cl = (CardLayout)PanelDisplay.getLayout();
 		cl.show(PanelDisplay, LOGIN);		
 	}
-	
-	protected void submitFile() {
-		// TODO Auto-generated method stub
-		if(FileID.getText().length()<4)
-			browseFile();
-		char c = (char) ('A' + QuestionID.getSelectedIndex());
-		
-	}
 
-	protected void browseFile() {
-		
-		int returnVal = Input.showOpenDialog(PanelSubmit);
+	protected void createLoginClicked() {
+		try
+		{
+			String[] columns = {TEAMNAME,"PASSWORD",CATEGORY};
 
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
-            File file = Input.getSelectedFile();
-            FileID.setText(file.toString());
-        }
-	}
+		String[][] data = getCreateLoginData();
 
-	protected void submitClicked() {
+		DefaultTableModel model = new DefaultTableModel(data,columns);
+		tableCreateLogin.setModel(model);		
 
 		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
-		cl.show(PanelDisplay, SUBMIT);
+		cl.show(PanelDisplay, CREATELOGIN);
+		
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+	
+	}
+
+	private String[][] getCreateLoginData() {
+		try
+		{
+			if(board.size()==0)
+			{
+				tableData row = new tableData();
+				row.Password = "Abhinav";
+				row.teamName = "Admin";
+				row.category = 2;
+				
+				board.addElement(row);
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				board.addElement(new tableData());
+				
+			}
+		
+		}catch(Exception e){
+			e.printStackTrace();
+		}	
+		
+		String[][] str = new String[board.size()][3];
+		try
+		{
+			for(int i=0;i<board.size();i++)
+			{
+				str[i][0] = board.elementAt(i).teamName;
+				str[i][1] = board.elementAt(i).Password;
+				str[i][2] = String.valueOf(board.elementAt(i).category);
+			}
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		return str;
 	}
 
 	protected void ShowProblem(char c) {
@@ -845,37 +1059,37 @@ public class ServerGUI {
 	
 	static String getProblemName(char c)
 	{
-		return "Design Pro" ;
+		return ProbName[c-'A'] ;
 	}
 
 	static String getProblemDesc(char c)
 	{
-		return "Design Pro consists of multiple domains like web designing, animations and graphic designing. This event attracts a large number of participants each year where they compete to prove their creative mettle for designing. Here, a participant is required to make a figure of mountain on a hypothetical Photoshop Software. This Photoshop has only two tools in it, one draws '/' and the other draws '\'. You will be given N, number of times each tool is used. You have to output number of figures of mountain possible.\nE.g. N=2\nThen, the number of figures of mountains possible is 2" ;
+		return ProbDesc[c-'A'];
 	}
 	
 	static String getInputFormat(char c)
 	{
-		return "There is a single positive integer T on the first line of input. It stands for the number of cases to follow. Each case consists of a number N, the number of time each tool was used." ;
+		return InputFormat[c-'A'];
 	}
 
 	static String getOutputFormat(char c)
 	{
-		return "Output consists of T lines, each line has an integer representing the number of figures of mountain possible. The answer has to be printed modulo 1000000007." ;
+		return OutputFormat[c-'A'];
 	}
 
 	static String getSampleInput(char c)
 	{
-		return "3\n4\n5\n6\n" ;
+		return SampleInput[c-'A'] ;
 	}
 
 	static String getSampleOutput(char c)
 	{
-		return "3\n4\n5\n6\n" ;
+		return SampleOutput[c-'A'] ;
 	}
 
 	static String getConstraints(char c)
 	{
-		return "Time Limit: 2sec\nCode Limit: 50000Bytes\nLanguage Allowed: C++\n" ;
+		return Constraints[c-'A'];
 	}	
 
 	protected void showRules()
@@ -926,7 +1140,7 @@ public class ServerGUI {
 	}	
 	
 	private String getRuleStr() {
-		return "1. Rule1\n2. Rule2\n";
+		return RulesStr;
 	}
 
 	private static void addPopup(Component component, final JPopupMenu popup) {

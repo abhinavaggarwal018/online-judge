@@ -1,0 +1,4 @@
+Client and server GUI working.
+
+Not included: socket between client and server
+			  Compiler and its implementation
