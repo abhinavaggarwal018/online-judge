@@ -1,5 +1,4 @@
 package org.eclipse.wb.swing;
-
 import java.awt.EventQueue;
 
 import javax.swing.JFrame;
@@ -15,6 +14,7 @@ import org.eclipse.wb.swing.FocusTraversalOnArray;
 import java.awt.CardLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -45,11 +45,17 @@ import javax.swing.text.StyledDocument;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.ObjectOutputStream;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
+
+import java.io.*;
+import java.net.*;
+
+import org.apache.commons.io.*;
 //import JudgeApplication.
 
 public class ServerGUI {
@@ -62,6 +68,7 @@ public class ServerGUI {
 		public int successful;
 		public int[] score = new int[7];
 		public int[] attempt = new int[7];
+		public int[] totalAttempt = new int[7];
 		public int time;
 		public boolean loggedIn;
 	
@@ -74,13 +81,31 @@ public class ServerGUI {
 			{
 				score[i]=0;
 				attempt[i]=0;
+				totalAttempt[i]=0;
 			}
 			successful=0;
 			time=0;
 			loggedIn=false;
 		}
+		
+		tableData(tableData temp)
+		{
+			category=temp.category;
+			teamName=temp.teamName;
+			Password="";
+			for(int i=0;i<7;i++)
+			{
+				score[i]=temp.score[i];
+				attempt[i]=temp.attempt[i];
+			}
+			successful=temp.successful;
+			time=temp.time;
+			loggedIn=temp.loggedIn;
+		}
 	};
-
+	
+	final static int MAX_TIME = 3600*3;
+	final static String PATH = "E:\\Bytes2014\\Submissions\\";
 	final static String TEAMNAME = "Team Name";
 	final static String CATEGORY = "Category";
 	final static String TIME = "Time";
@@ -98,7 +123,7 @@ public class ServerGUI {
 	final static String LEADERBOARD = "LEADERBOARD";
 	final static String RULES = "RULES";
 	final static String LOGIN = "LOGIN";
-
+	
 	private JFrame frame;
 	/**
 	 * @wbp.nonvisual location=239,139
@@ -138,7 +163,9 @@ public class ServerGUI {
 	private JMenuItem edit;
 	private JTable table;
 	private JTextField IPServer;
-	private JTextField PortServer;	
+	private JTextField addTime;
+	private static JTextField PortServerSubmit;	
+	private static JTextField PortServerProblem;
 	private JTextArea txtrProblemName;
 	private JTextArea txtrProblemDescription;
 	private JTextArea txtrInputFormat;
@@ -153,8 +180,11 @@ public class ServerGUI {
 	private JButton btnCreateLogin; 
 	private JPanel panel_1 ;
 	private JPanel panel;
+	private JTable tableCreateLogin;
+	private JScrollPane PaneCreateLogin;
+	private JButton btnSave;
 	
-	private Vector<tableData> board = new Vector<tableData>();
+	private static Vector<tableData> board = new Vector<tableData>();
 	private static String[] ProbDesc;
 	private static String[] InputFormat;
 	private static String[] OutputFormat;
@@ -164,9 +194,10 @@ public class ServerGUI {
 	private static String[] ProbName;
 	private static String RulesStr;
 	private static int selectedProblem;
-	private JTable tableCreateLogin;
-	private JScrollPane PaneCreateLogin;
-	private JButton btnSave;
+	private static int Time;
+	private static boolean isStarted;
+	private JButton button;
+	private static JLabel lblTimeRemaining;
 	/**
 	 * @wbp.nonvisual location=112,399
 	 */
@@ -174,6 +205,7 @@ public class ServerGUI {
 
 	/**
 	 * Launch the application.
+	 * @wbp.parser.entryPoint
 	 */
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
@@ -186,11 +218,290 @@ public class ServerGUI {
 					e.printStackTrace();
 				}
 			}
+			
 		});
+		
+		Thread submit =new Thread(new Runnable() {
+			public void run() {
+				try {
+						acceptSolutions();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		submit.start();
+
+		Thread giveData= new Thread(new Runnable() {
+			public void run() {
+				try {
+	 					giveProblemSet();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		giveData.start();
+		
+		Thread startTime= new Thread(new Runnable() {
+			public void run() {
+				try {
+	 					reduceTime();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		startTime.start();
 	}
 
+
+	protected static Object reduceTime() {
+
+		if(isStarted)
+		{
+			Time--;
+			int min=Time/60;
+			int sec=Time%60;
+			
+			if(Time>60)
+				lblTimeRemaining.setText("Time Remaining: "+ String.valueOf(min) + "min " +  String.valueOf(sec) + "sec");
+			else
+				lblTimeRemaining.setText("Time Remaining: "+ String.valueOf(Time) + "sec");
+
+		}
+		
+
+		try {
+			
+		    Thread.sleep(1000);
+
+		} catch(InterruptedException ex) {
+		    Thread.currentThread().interrupt();
+		}	
+	    
+		return reduceTime();
+	    
+	}
+
+
+	/**
+	 * @wbp.parser.entryPoint
+	 */
+	static void giveProblemSet() {
+		
+		while(Time>0)
+		{
+			try{
+				
+				ServerSocket skt1= new ServerSocket(Integer.parseInt(PortServerProblem.getText()));
+				
+	            Socket server = skt1.accept();
+	            DataInputStream in = new DataInputStream(server.getInputStream());
+	            
+	            String msg = in.readUTF();
+	            System.out.println(msg);
+	            
+	            DataOutputStream out =  new DataOutputStream(server.getOutputStream());
+
+	            if(isStarted==true && msg.charAt(0)=='P' && msg.length() >=3 )
+	            {
+	            	if((int)(msg.charAt(1)-'A')>=0 && (int)(msg.charAt(1)-'A')<=7 )
+	            	{
+	            	
+	            		if((msg.charAt(2)-'0')==1)
+	            		{
+	            			out.writeUTF(ProbName[(int)(msg.charAt(1)-'0')]);
+	            			server.close();
+	            			continue;
+	            		}
+	            		
+	            		if((msg.charAt(2)-'0')==2)
+	            		{
+	            			out.writeUTF(ProbDesc[(int)(msg.charAt(1)-'0')]);
+	            			server.close();
+	            			continue;
+	            		}
+	            		
+	            		if((msg.charAt(2)-'0')==3)
+	            		{
+	            			out.writeUTF(InputFormat[(int)(msg.charAt(1)-'0')]);
+	            			server.close();
+	            			continue;
+	            		}
+	            		
+	            		if((msg.charAt(2)-'0')==4)
+	            		{
+	            			out.writeUTF(OutputFormat[(int)(msg.charAt(1)-'0')]);
+	            			server.close();
+	            			continue;
+	            		}
+	            		
+	            		if((msg.charAt(2)-'0')==5)
+	            		{
+	            			out.writeUTF(SampleInput[(int)(msg.charAt(1)-'0')]);
+	            			server.close();
+	            			continue;
+	            		}
+	            		
+	            		if((msg.charAt(2)-'0')==6)
+	            		{
+	            			out.writeUTF(SampleOutput[(int)(msg.charAt(1)-'0')]);
+	            			server.close();
+	            			continue;
+	            		}
+	            		
+	            		if((msg.charAt(2)-'0')==7)
+	            		{
+	            			out.writeUTF(Constraints[(int)(msg.charAt(1)-'0')]);
+	            			server.close();
+	            			continue;
+	            		}
+	            	}
+	            	
+	            }
+	            
+	            if(msg.charAt(0)=='R')
+	            {
+        			out.writeUTF(RulesStr);
+        			server.close();
+        			continue;
+	            }
+
+	            if(msg.charAt(0)=='B')
+	            {
+	            	out.writeUTF(String.valueOf(board.size()));
+	            	
+	            	for(int i=0;i<board.size();i++)
+	            	{
+	    	            ObjectOutputStream out1 =  new ObjectOutputStream(server.getOutputStream());	            		
+	    	            out1.writeObject(board.elementAt(i));
+	            	}
+            		server.close();
+            		continue;
+	            }
+	            
+	            if(msg.charAt(0)=='L')
+	            {
+		            String User = in.readUTF();
+		            String Pwd = in.readUTF();
+		            int flag=0;
+		            
+	            	for(int i=0;i<board.size();i++)
+	            	{
+	            		if(board.elementAt(i).teamName.equals(User) && board.elementAt(i).Password.equals(Pwd))
+	            		{
+	            			out.writeUTF("Successful Login");
+	            			out.writeBoolean(true);
+	                		server.close();
+	                		flag=1;
+	                		break;
+	            		}
+	            	}
+	            	
+	            	if(flag==1)
+	            		continue;
+	            	
+        			out.writeUTF("Login credentials do not match. Try again!");	            	
+        			out.writeBoolean(false);;
+        			server.close();
+	            }
+	            
+	         }catch(IOException e)
+	         {
+	            e.printStackTrace();
+	            break;
+	         }
+		}
+	}
+		
+		/**
+		 * @wbp.parser.entryPoint
+		 */
+		static void acceptSolutions() {
+		
+		while(Time>0 && isStarted==true)
+		{
+			try{  
+				ServerSocket submitSolution=new ServerSocket(Integer.parseInt(PortServerSubmit.getText()));  
+				Socket skt=submitSolution.accept();//establishes connection   
+				  
+				DataInputStream dis = new DataInputStream(skt.getInputStream());
+	
+				String str=(String)dis.readUTF();  
+				System.out.println("message= " + str);  
+	
+				DataOutputStream dos = new DataOutputStream(skt.getOutputStream());
+				dos.writeUTF("Accepted");
+				skt.close();
+				continue;
+				
+/*				int code = 0;
+				
+				if(str.length()>=2)
+					if(str.charAt(0)=='S')
+					{
+						code = (Integer) (str.charAt(1)-'0');
+						
+						String teamName = dis.readUTF();
+						
+						int ind=0;
+						for(;ind<board.size();ind++)
+						{
+							if(board.elementAt(ind).teamName==teamName)
+								break;
+						}
+						
+						if(ind==board.size())
+						{
+							//TODO return and INVALID team name
+						}
+						
+						String path = PATH + teamName + "\\Problem " + String.valueOf(((char)(code+'A')) + "\\Code" + String.valueOf(board.elementAt(ind).totalAttempt[++code]));
+					    String message = "";					
+						FileOutputStream fos = new FileOutputStream(path + ".cpp");
+						IOUtils.copy(dis, fos);
+						fos.close();
+						
+						ProcessBuilder pb = new ProcessBuilder("g++ " + "-o " + path + ".exe " + path + ".cpp");
+						pb.directory(new File("C:\\MinGW\\bin"));
+						pb.redirectErrorStream(true);
+						
+						Process process = pb.start();
+						InputStream stderr = process.getInputStream();
+					    InputStreamReader isr = new InputStreamReader(stderr);
+					    BufferedReader br = new BufferedReader(isr);
+					    String line = null;
+	
+					    while ((line = br.readLine()) != null) {
+					    	//TODO  message = message + line + "\n";
+					    	//TODO compilation error
+					    	//TODO return;
+					    }
+					    
+					    process.waitFor();
+					    
+					  //TODO 				    Now just do some run of application
+					    
+					}
+				else
+				{
+					//TODO 		return errormessage;
+				}
+				submitSolution.close();  
+	*/
+			}catch(Exception e){
+				e.printStackTrace();
+			}  
+			
+		}  
+	}
 	/**
 	 * Create the application.
+	 * @wbp.parser.entryPoint
 	 */
 	public ServerGUI() {
 		initialize();
@@ -198,6 +509,7 @@ public class ServerGUI {
 
 	/**
 	 * Initialize the contents of the frame.
+	 * @wbp.parser.entryPoint
 	 */
 	private void initialize() {
 		
@@ -322,8 +634,18 @@ public class ServerGUI {
 				RulesStr = txtrRules.getText(); 
 			}
 		});
-		btnSaveRules.setBounds(240, 478, 89, 23);
+		btnSaveRules.setBounds(109, 478, 89, 23);
 		panel_1.add(btnSaveRules);
+		
+		button = new JButton("Start Contest");
+		button.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				isStarted = true;
+				button.setText("Started Contest!");
+			}
+		});
+		button.setBounds(259, 478, 125, 23);
+		panel_1.add(button);
 		
 //		JScrollPane PaneLeaderBoard;
 		PaneLeaderBoard = new JScrollPane();
@@ -659,6 +981,7 @@ public class ServerGUI {
 		menuBar.add(file);
 		
 //		JMenuItem close;
+		addTime = new JTextField();
 		edit = new JMenuItem("Configeration");
 		edit.addActionListener(new ActionListener(){
 	        
@@ -666,19 +989,26 @@ public class ServerGUI {
 	        {
 				Object[] message = {
 						"IP Address: " , IPServer,
-						"Port Number"  , PortServer
+						"Port Number Submit"  , PortServerSubmit,
+						"Port Number Problem"  , PortServerProblem,
+						"Add Contest Time", addTime
 				};
 				
 				JOptionPane.showConfirmDialog(null, message, "Configeration", JOptionPane.OK_CANCEL_OPTION);
+				Time=Time+Integer.parseInt(addTime.getText());
 	        }
 		});
 		file.add(edit);
 
 		frame.setJMenuBar(menuBar);
+
+		lblTimeRemaining = new JLabel("Time Remaining: ");
+		menuBar.add(lblTimeRemaining);
 		
 		IPServer = new JTextField();
-		PortServer = new JTextField();		
-
+		PortServerSubmit = new JTextField();		
+		PortServerProblem = new JTextField();	
+		
 		ProbName = new String[7];
 		ProbDesc = new String[7];
 		InputFormat = new String[7];
@@ -687,69 +1017,143 @@ public class ServerGUI {
 		SampleOutput = new String[7];
 		Constraints = new String[7];
 		RulesStr = new String();
-		
+
+		Time = new Integer(MAX_TIME);		
+
 		displayLogin();
-	}
+	}	
+	/**
+	 * @wbp.parser.entryPoint
+	 */
 
-	protected void saveCreateLogin() {
-		try
-		{
-			for(int i=0;i<table.getRowCount();i++)
-			{
-				board.elementAt(i).teamName = (String) tableCreateLogin.getValueAt(i, 0);
-				board.elementAt(i).Password = (String) tableCreateLogin.getValueAt(i, 1);
-				board.elementAt(i).category = Integer.parseInt((String) tableCreateLogin.getValueAt(i, 2));			
-			}
-			
-		}catch(Exception e){
+	/**
+	 * @wbp.parser.entryPoint
+	 */
+	protected void ShowProblem(char c) {
+		
+		Problems.setText("");
+		StyledDocument question = (StyledDocument) Problems.getDocument();
+		
+		Style style1 = question.addStyle("Style1", null);
+		StyleConstants.setBold(style1, true);
+		StyleConstants.setFontSize(style1, 18);
+		StyleConstants.setUnderline(style1, true);
+		StyleConstants.setSpaceAbove(style1, 30);
+		StyleConstants.setFontFamily(style1, Font.SANS_SERIF);
+	
+		Style style2 = question.addStyle("Style2", null);
+		StyleConstants.setBold(style2, true);
+		StyleConstants.setFontSize(style2, 14);
+		StyleConstants.setUnderline(style2, true);
+		StyleConstants.setSpaceAbove(style2, 30);
+		StyleConstants.setFontFamily(style2, Font.SANS_SERIF);
+	
+		Style style3 = question.addStyle("Style3", null);
+		StyleConstants.setBold(style3, false);
+		StyleConstants.setFontSize(style3, 12);
+		StyleConstants.setUnderline(style3, false);
+		StyleConstants.setSpaceAbove(style3, 30);
+		StyleConstants.setFontFamily(style3, Font.SANS_SERIF);
+	
+		// Add Problem Name in question set		
+		
+		try {
+			question.insertString(0, "Problem "+ c + ": " + getProblemName(c) +"\n", style1);
+		} catch (BadLocationException e) {
 			e.printStackTrace();
 		}
 		
-	}
-
-	protected void saveLeaderBoard() {
-		try
-		{
-			for(int i=0;i<table.getRowCount();i++)
-			{
-				board.elementAt(i).teamName = (String) table.getValueAt(i, 0);
-				board.elementAt(i).category = Integer.parseInt((String) table.getValueAt(i, 1));
+		// Add Problem Description in question set
+		
+		try {
+			question.insertString(question.getLength()+1, "\n" + getProblemDesc(c) +"\n\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+	
+		// Add Input format in question set
+		
+		try {
+			question.insertString(question.getLength()+1, "Input Format\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Input format Description
+		
+		try {
+			question.insertString(question.getLength()+1, getInputFormat(c) +"\n\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Output format in question set
+		
+		try {
+			question.insertString(question.getLength()+1, "Output Format\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Output format Description in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, getOutputFormat(c) +"\n\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Sample Input in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, "\nSample Input\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+	
+		// Add Sample Input Description in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, getSampleInput(c) +"\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}		
+	
+		// Add Sample Output in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, "Sample Output\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Sample Output Description in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, getSampleOutput(c) +"\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Constraints
+		
+		try {
+			question.insertString(question.getLength()+1, "Constraints\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Constraints Description in question set
+		
+		try {
+			question.insertString(question.getLength()+1, getConstraints(c) +"\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
+		cl.show(PanelDisplay, PROBLEMS);
 				
-				for(int j=0;j<7;j++)
-				{
-		
-					String str1 = (String) table.getValueAt(i, 2+j);
-//					System.out.println(str1+"END");
-					
-					int ind;
-					
-					for(ind=0;ind<str1.length();ind++)
-					{
-						if(str1.charAt(ind)> '9' || str1.charAt(ind) <'0')
-							break;
-					}
-
-					board.elementAt(i).score[j] = Integer.parseInt(str1.substring(0, ind));
-
-					for(;ind<str1.length();ind++)
-					{
-						if(str1.charAt(ind)<= '9' && str1.charAt(ind) >='0')
-							break;
-					}
-					
-					board.elementAt(i).attempt[j] = Integer.parseInt(str1.substring(ind,str1.length()-1));
-					//str[i][2+j] = String.valueOf(board.elementAt(i).score[j]) + "\n   (" + String.valueOf(board.elementAt(i).attempt[j]) + ")";
-
-				}
-
-				board.elementAt(i).successful = Integer.parseInt((String) table.getValueAt(i, 9));
-				board.elementAt(i).time = Integer.parseInt((String) table.getValueAt(i, 10));
-
-			}
-			
-		}catch(Exception e){
-			e.printStackTrace();
-		}
 	}
 
 	protected void saveChanges() {
@@ -798,12 +1202,50 @@ public class ServerGUI {
 		return str;
 	}
 	
-	private void fillData()
-	{
-		//TODO
-		
-		return;
-	}
+	protected void saveLeaderBoard() {
+			try
+			{
+				for(int i=0;i<table.getRowCount();i++)
+				{
+					board.elementAt(i).teamName = (String) table.getValueAt(i, 0);
+					board.elementAt(i).category = Integer.parseInt((String) table.getValueAt(i, 1));
+					
+					for(int j=0;j<7;j++)
+					{
+			
+						String str1 = (String) table.getValueAt(i, 2+j);
+	//					System.out.println(str1+"END");
+						
+						int ind;
+						
+						for(ind=0;ind<str1.length();ind++)
+						{
+							if(str1.charAt(ind)> '9' || str1.charAt(ind) <'0')
+								break;
+						}
+	
+						board.elementAt(i).score[j] = Integer.parseInt(str1.substring(0, ind));
+	
+						for(;ind<str1.length();ind++)
+						{
+							if(str1.charAt(ind)<= '9' && str1.charAt(ind) >='0')
+								break;
+						}
+						
+						board.elementAt(i).attempt[j] = Integer.parseInt(str1.substring(ind,str1.length()-1));
+						//str[i][2+j] = String.valueOf(board.elementAt(i).score[j]) + "\n   (" + String.valueOf(board.elementAt(i).attempt[j]) + ")";
+	
+					}
+	
+					board.elementAt(i).successful = Integer.parseInt((String) table.getValueAt(i, 9));
+					board.elementAt(i).time = Integer.parseInt((String) table.getValueAt(i, 10));
+	
+				}
+			
+			}catch(Exception e){
+				e.printStackTrace();
+			}
+		}
 
 	protected void getLoginDetails() {
 		
@@ -829,8 +1271,11 @@ public class ServerGUI {
 	}
 
 	private boolean checkValidLogin(String text, char[] password2) {
-		
-		return true;
+
+		if(text.equals("Abhinav") && java.util.Arrays.equals(password2, "Abhi".toCharArray()))
+			return true;
+		else
+			return false;	
 	}
 
 	private void displayLogin() {
@@ -849,6 +1294,9 @@ public class ServerGUI {
 		cl.show(PanelDisplay, LOGIN);		
 	}
 
+	/**
+	 * @wbp.parser.entryPoint
+	 */
 	protected void createLoginClicked() {
 		try
 		{
@@ -930,10 +1378,30 @@ public class ServerGUI {
 		return str;
 	}
 
-	protected void ShowProblem(char c) {
+	protected void saveCreateLogin() {
+		try
+		{
+			for(int i=0;i<table.getRowCount();i++)
+			{
+				board.elementAt(i).teamName = (String) tableCreateLogin.getValueAt(i, 0);
+				board.elementAt(i).Password = (String) tableCreateLogin.getValueAt(i, 1);
+				board.elementAt(i).category = Integer.parseInt((String) tableCreateLogin.getValueAt(i, 2));			
+			}
+			
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 		
-		Problems.setText("");
-		StyledDocument question = (StyledDocument) Problems.getDocument();
+	}
+
+	private String getRuleStr() {
+		return RulesStr;
+	}
+
+	protected void showRules()
+	{
+		Rules.setText("");
+		StyledDocument question = (StyledDocument) Rules.getDocument();
 		
 		Style style1 = question.addStyle("Style1", null);
 		StyleConstants.setBold(style1, true);
@@ -941,122 +1409,42 @@ public class ServerGUI {
 		StyleConstants.setUnderline(style1, true);
 		StyleConstants.setSpaceAbove(style1, 30);
 		StyleConstants.setFontFamily(style1, Font.SANS_SERIF);
-
+	
 		Style style2 = question.addStyle("Style2", null);
 		StyleConstants.setBold(style2, true);
 		StyleConstants.setFontSize(style2, 14);
 		StyleConstants.setUnderline(style2, true);
 		StyleConstants.setSpaceAbove(style2, 30);
 		StyleConstants.setFontFamily(style2, Font.SANS_SERIF);
-
+	
 		Style style3 = question.addStyle("Style3", null);
 		StyleConstants.setBold(style3, false);
 		StyleConstants.setFontSize(style3, 12);
 		StyleConstants.setUnderline(style3, false);
 		StyleConstants.setSpaceAbove(style3, 30);
 		StyleConstants.setFontFamily(style3, Font.SANS_SERIF);
-
-		// Add Problem Name in question set		
-		
-		try {
-			question.insertString(0, "Problem "+ c + ": " + getProblemName(c) +"\n", style1);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
-		// Add Problem Description in question set
-		
-		try {
-			question.insertString(question.getLength()+1, "\n" + getProblemDesc(c) +"\n\n", style3);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
 	
-		// Add Input format in question set
+		// Add Rules in question set
 		
 		try {
-			question.insertString(question.getLength()+1, "Input Format\n", style2);
+			question.insertString(0, "General Rules\n\n", style1);
 		} catch (BadLocationException e) {
 			e.printStackTrace();
 		}
 		
-		// Add Input format Description
+		// Add Rules Description in question set
 		
 		try {
-			question.insertString(question.getLength()+1, getInputFormat(c) +"\n\n", style3);
+			question.insertString(question.getLength()+1, "\n" + getRuleStr() +"\n\n", style3);
 		} catch (BadLocationException e) {
 			e.printStackTrace();
-		}
-		
-		// Add Output format in question set
-		
-		try {
-			question.insertString(question.getLength()+1, "Output Format\n", style2);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
-		// Add Output format Description in problem set
-		
-		try {
-			question.insertString(question.getLength()+1, getOutputFormat(c) +"\n\n", style3);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
-		// Add Sample Input in problem set
-		
-		try {
-			question.insertString(question.getLength()+1, "\nSample Input\n", style2);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-
-		// Add Sample Input Description in problem set
-		
-		try {
-			question.insertString(question.getLength()+1, getSampleInput(c) +"\n", style3);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}		
-
-		// Add Sample Output in problem set
-		
-		try {
-			question.insertString(question.getLength()+1, "Sample Output\n", style2);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
-		// Add Sample Output Description in problem set
-		
-		try {
-			question.insertString(question.getLength()+1, getSampleOutput(c) +"\n", style3);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
-		// Add Constraints
-		
-		try {
-			question.insertString(question.getLength()+1, "Constraints\n", style2);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
-		// Add Constraints Description in question set
-		
-		try {
-			question.insertString(question.getLength()+1, getConstraints(c) +"\n", style3);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
+		}	
+	
 		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
-		cl.show(PanelDisplay, PROBLEMS);
-				
-	}
+		cl.show(PanelDisplay, RULES);
 	
+	}
+
 	static String getProblemName(char c)
 	{
 		return ProbName[c-'A'] ;
@@ -1091,57 +1479,6 @@ public class ServerGUI {
 	{
 		return Constraints[c-'A'];
 	}	
-
-	protected void showRules()
-	{
-		Rules.setText("");
-		StyledDocument question = (StyledDocument) Rules.getDocument();
-		
-		Style style1 = question.addStyle("Style1", null);
-		StyleConstants.setBold(style1, true);
-		StyleConstants.setFontSize(style1, 18);
-		StyleConstants.setUnderline(style1, true);
-		StyleConstants.setSpaceAbove(style1, 30);
-		StyleConstants.setFontFamily(style1, Font.SANS_SERIF);
-
-		Style style2 = question.addStyle("Style2", null);
-		StyleConstants.setBold(style2, true);
-		StyleConstants.setFontSize(style2, 14);
-		StyleConstants.setUnderline(style2, true);
-		StyleConstants.setSpaceAbove(style2, 30);
-		StyleConstants.setFontFamily(style2, Font.SANS_SERIF);
-
-		Style style3 = question.addStyle("Style3", null);
-		StyleConstants.setBold(style3, false);
-		StyleConstants.setFontSize(style3, 12);
-		StyleConstants.setUnderline(style3, false);
-		StyleConstants.setSpaceAbove(style3, 30);
-		StyleConstants.setFontFamily(style3, Font.SANS_SERIF);
-
-		// Add Rules in question set
-		
-		try {
-			question.insertString(0, "General Rules\n\n", style1);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}
-		
-		// Add Rules Description in question set
-		
-		try {
-			question.insertString(question.getLength()+1, "\n" + getRuleStr() +"\n\n", style3);
-		} catch (BadLocationException e) {
-			e.printStackTrace();
-		}	
-
-		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
-		cl.show(PanelDisplay, RULES);
-
-	}	
-	
-	private String getRuleStr() {
-		return RulesStr;
-	}
 
 	private static void addPopup(Component component, final JPopupMenu popup) {
 		component.addMouseListener(new MouseAdapter() {

@@ -41,7 +41,14 @@ import javax.swing.text.StyledDocument;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
@@ -54,27 +61,49 @@ public class ClientGUI {
 	public class tableData
 	{
 		public int category;
+		public String Password;
 		public String teamName;
 		public int successful;
 		public int[] score = new int[7];
 		public int[] attempt = new int[7];
+		public int[] totalAttempt = new int[7];
 		public int time;
+		public boolean loggedIn;
 	
 		tableData()
 		{
 			category=1;
 			teamName="test";
+			Password="";
 			for(int i=0;i<7;i++)
 			{
 				score[i]=0;
 				attempt[i]=0;
+				totalAttempt[i]=0;
 			}
 			successful=0;
 			time=0;
+			loggedIn=false;
+			
+		}
+		
+		tableData(tableData temp)
+		{
+			category=temp.category;
+			teamName=temp.teamName;
+			Password="";
+			for(int i=0;i<7;i++)
+			{
+				score[i]=temp.score[i];
+				attempt[i]=temp.attempt[i];
+			}
+			successful=temp.successful;
+			time=temp.time;
+			loggedIn=temp.loggedIn;
 		}
 	};
 
-
+	final static int MAX_TIME = 3600*3;
 	final static String TEAMNAME = "Team Name";
 	final static String CATEGORY = "Category";
 	final static String TIME = "Time";
@@ -140,10 +169,10 @@ public class ClientGUI {
 	private JButton btnSubmit;
 	private JTable table;
 	private JTextField IPServer;
-	private JTextField PortServer;	
-	
+	private JTextField PortServerSubmit;	
+	private JTextField PortServerProblem;	
 	private Vector<tableData> board = new Vector<tableData>();
-
+	private int Time;
 	
 	/**
 	 * @wbp.nonvisual location=112,399
@@ -584,7 +613,8 @@ public class ClientGUI {
 	        {
 				Object[] message = {
 						"IP Address: " , IPServer,
-						"Port Number"  , PortServer
+						"Port Number Submit:"  , PortServerSubmit,
+						"Port Number Problems:", PortServerProblem
 				};
 				
 				JOptionPane.showConfirmDialog(null, message, "Configeration", JOptionPane.OK_CANCEL_OPTION);
@@ -595,8 +625,11 @@ public class ClientGUI {
 		frame.setJMenuBar(menuBar);
 		
 		IPServer = new JTextField();
-		PortServer = new JTextField();		
+		PortServerSubmit = new JTextField();		
+		PortServerProblem = new JTextField();
 		
+		Time = new Integer(MAX_TIME);
+	
 		displayLogin();
 	}
 	protected void showLeaderBoard() {
@@ -637,12 +670,45 @@ public class ClientGUI {
 	
 	private void fillData()
 	{
-		//TODO
-		
-		board.addElement(new tableData());
-		board.addElement(new tableData());
-		board.addElement(new tableData());
-		return;
+		  String serverName = IPServer.getText();
+	      int port = Integer.parseInt(PortServerProblem.getText());
+	      
+	      try
+	      {
+	         Socket client = new Socket(serverName, port);
+	         OutputStream outToServer = client.getOutputStream();
+	         DataOutputStream out = new DataOutputStream(outToServer);
+
+	         String msg="";
+	         msg = msg + 'B';
+	         
+	         out.writeUTF(msg);
+	         
+	         InputStream inFromServer = client.getInputStream();
+	         ObjectInputStream in = new ObjectInputStream(inFromServer);
+	         DataInputStream dis = new DataInputStream(inFromServer);
+	         
+	         board.clear();
+
+	         int n =Integer.parseInt(dis.readUTF());
+	         
+	         while(n>0)
+	         {	
+	        	 n=n-1;
+				 tableData data;
+				 try {
+					 	data = (tableData) in.readObject();
+					 	data.Password="";
+					 	board.addElement(data);
+				 	} catch (ClassNotFoundException e) {
+					e.printStackTrace();
+				}
+	         }
+	         
+	         client.close();
+	      }catch(IOException e){
+	    	  e.printStackTrace();
+	      }
 	}
 
 	protected void getLoginDetails() {
@@ -670,7 +736,39 @@ public class ClientGUI {
 
 	private boolean checkValidLogin(String text, char[] password2) {
 		
-		return true;
+		  String serverName = IPServer.getText();
+	      int port = Integer.parseInt(PortServerProblem.getText());
+	      
+	      try
+	      {
+	         Socket client = new Socket(serverName, port);
+	         OutputStream outToServer = client.getOutputStream();
+	         DataOutputStream out = new DataOutputStream(outToServer);
+
+	         String msg="";
+	         msg = msg + 'L';
+	         
+	         out.writeUTF(msg);
+	         
+	         InputStream inFromServer = client.getInputStream();
+	         DataInputStream in = new DataInputStream(inFromServer);
+	         
+	         String password = new String(password2);
+
+	         out.writeUTF(text);
+	         out.writeUTF(password);
+	         
+ 	     	 JOptionPane.showMessageDialog(null, in.readUTF(), "Message", JOptionPane.OK_OPTION);
+	         
+	         client.close();
+	         
+	         return in.readBoolean();
+	         
+	      }catch(IOException e){
+	    	  e.printStackTrace();
+	      }
+	      
+	      return false;
 	}
 
 	private void displayLogin() {
@@ -840,39 +938,262 @@ public class ClientGUI {
 				
 	}
 	
-	static String getProblemName(char c)
+	String getProblemName(char c)
 	{
-		return "Design Pro" ;
+				
+		  String serverName = IPServer.getText();
+	      int port = Integer.parseInt(PortServerProblem.getText());
+	      String str = "";
+	      
+	      try
+	      {
+	         Socket client = new Socket(serverName, port);
+	         OutputStream outToServer = client.getOutputStream();
+	         DataOutputStream out = new DataOutputStream(outToServer);
+
+	         String msg="";
+	         msg = msg + 'P';
+	         msg = msg + c;
+	         msg = msg + '1';
+	         
+	         out.writeUTF(msg);
+	         
+	         InputStream inFromServer = client.getInputStream();
+	         DataInputStream in = new DataInputStream(inFromServer);
+	
+	         str = in.readUTF();
+	         
+	         client.close();
+	         
+	      }catch(IOException e){
+	    	  e.printStackTrace();
+	      }
+	      
+	      return str;
+		
+		//return "Design Pro" ;
 	}
 
-	static String getProblemDesc(char c)
+	String getProblemDesc(char c)
 	{
-		return "Design Pro consists of multiple domains like web designing, animations and graphic designing. This event attracts a large number of participants each year where they compete to prove their creative mettle for designing. Here, a participant is required to make a figure of mountain on a hypothetical Photoshop Software. This Photoshop has only two tools in it, one draws '/' and the other draws '\'. You will be given N, number of times each tool is used. You have to output number of figures of mountain possible.\nE.g. N=2\nThen, the number of figures of mountains possible is 2" ;
+		
+		  String serverName = IPServer.getText();
+		  int port = Integer.parseInt(PortServerProblem.getText());
+		  String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+		     OutputStream outToServer = client.getOutputStream();
+		     DataOutputStream out = new DataOutputStream(outToServer);
+		
+		     String msg="";
+		     msg = msg + 'P';
+		     msg = msg + c;
+		     msg = msg + '2';
+		     
+		     out.writeUTF(msg);
+		     
+		     InputStream inFromServer = client.getInputStream();
+		     DataInputStream in = new DataInputStream(inFromServer);
+		
+		     str = in.readUTF();
+		     
+		     client.close();
+		     
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+		  
+		  return str;
+
+		//		return "Design Pro consists of multiple domains like web designing, animations and graphic designing. This event attracts a large number of participants each year where they compete to prove their creative mettle for designing. Here, a participant is required to make a figure of mountain on a hypothetical Photoshop Software. This Photoshop has only two tools in it, one draws '/' and the other draws '\'. You will be given N, number of times each tool is used. You have to output number of figures of mountain possible.\nE.g. N=2\nThen, the number of figures of mountains possible is 2" ;
 	}
 	
-	static String getInputFormat(char c)
+	String getInputFormat(char c)
 	{
-		return "There is a single positive integer T on the first line of input. It stands for the number of cases to follow. Each case consists of a number N, the number of time each tool was used." ;
+		
+		  String serverName = IPServer.getText();
+		  int port = Integer.parseInt(PortServerProblem.getText());
+		  String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+		     OutputStream outToServer = client.getOutputStream();
+		     DataOutputStream out = new DataOutputStream(outToServer);
+		
+		     String msg="";
+		     msg = msg + 'P';
+		     msg = msg + c;
+		     msg = msg + '3';
+		     
+		     out.writeUTF(msg);
+		     
+		     InputStream inFromServer = client.getInputStream();
+		     DataInputStream in = new DataInputStream(inFromServer);
+		
+		     str = in.readUTF();
+		     
+		     client.close();
+		     
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+		  
+		  return str;
+		  
+		//	return "There is a single positive integer T on the first line of input. It stands for the number of cases to follow. Each case consists of a number N, the number of time each tool was used." ;
 	}
 
-	static String getOutputFormat(char c)
+	String getOutputFormat(char c)
 	{
-		return "Output consists of T lines, each line has an integer representing the number of figures of mountain possible. The answer has to be printed modulo 1000000007." ;
+		
+		  String serverName = IPServer.getText();
+		  int port = Integer.parseInt(PortServerProblem.getText());
+		  String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+		     OutputStream outToServer = client.getOutputStream();
+		     DataOutputStream out = new DataOutputStream(outToServer);
+		
+		     String msg="";
+		     msg = msg + 'P';
+		     msg = msg + c;
+		     msg = msg + '4';
+		     
+		     out.writeUTF(msg);
+		     
+		     InputStream inFromServer = client.getInputStream();
+		     DataInputStream in = new DataInputStream(inFromServer);
+		
+		     str = in.readUTF();
+		     
+		     client.close();
+		     
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+		  
+		  return str;
+
+
+		
+		//return "Output consists of T lines, each line has an integer representing the number of figures of mountain possible. The answer has to be printed modulo 1000000007." ;
 	}
 
-	static String getSampleInput(char c)
+	String getSampleInput(char c)
 	{
-		return "3\n4\n5\n6\n" ;
+		
+		  String serverName = IPServer.getText();
+		  int port = Integer.parseInt(PortServerProblem.getText());
+		  String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+		     OutputStream outToServer = client.getOutputStream();
+		     DataOutputStream out = new DataOutputStream(outToServer);
+		
+		     String msg="";
+		     msg = msg + 'P';
+		     msg = msg + c;
+		     msg = msg + '5';
+		     
+		     out.writeUTF(msg);
+		     
+		     InputStream inFromServer = client.getInputStream();
+		     DataInputStream in = new DataInputStream(inFromServer);
+		
+		     str = in.readUTF();
+		     
+		     client.close();
+		     
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+		  
+		  return str;
+
+
+		//		return "3\n4\n5\n6\n" ;
 	}
 
-	static String getSampleOutput(char c)
+	String getSampleOutput(char c)
 	{
-		return "3\n4\n5\n6\n" ;
+		
+		  String serverName = IPServer.getText();
+		  int port = Integer.parseInt(PortServerProblem.getText());
+		  String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+		     OutputStream outToServer = client.getOutputStream();
+		     DataOutputStream out = new DataOutputStream(outToServer);
+		
+		     String msg="";
+		     msg = msg + 'P';
+		     msg = msg + c;
+		     msg = msg + '6';
+		     
+		     out.writeUTF(msg);
+		     
+		     InputStream inFromServer = client.getInputStream();
+		     DataInputStream in = new DataInputStream(inFromServer);
+		
+		     str = in.readUTF();
+		     
+		     client.close();
+		     
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+		  
+		  return str;
+
+
+		
+		//	return "3\n4\n5\n6\n" ;
 	}
 
-	static String getConstraints(char c)
+	String getConstraints(char c)
 	{
-		return "Time Limit: 2sec\nCode Limit: 50000Bytes\nLanguage Allowed: C++\n" ;
+		
+		  String serverName = IPServer.getText();
+		  int port = Integer.parseInt(PortServerProblem.getText());
+		  String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+		     OutputStream outToServer = client.getOutputStream();
+		     DataOutputStream out = new DataOutputStream(outToServer);
+		
+		     String msg="";
+		     msg = msg + 'P';
+		     msg = msg + c;
+		     msg = msg + '7';
+		     
+		     out.writeUTF(msg);
+		     
+		     InputStream inFromServer = client.getInputStream();
+		     DataInputStream in = new DataInputStream(inFromServer);
+		
+		     str = in.readUTF();
+		     
+		     client.close();
+		     
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+		  
+		  return str;
+
+
+		//return "Time Limit: 2sec\nCode Limit: 50000Bytes\nLanguage Allowed: C++\n" ;
 	}	
 
 	protected void showRules()
@@ -923,7 +1244,37 @@ public class ClientGUI {
 	}	
 	
 	private String getRuleStr() {
-		return "1. Rule1\n2. Rule2\n";
+		
+		  String serverName = IPServer.getText();
+		  int port = Integer.parseInt(PortServerProblem.getText());
+		  String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+		     OutputStream outToServer = client.getOutputStream();
+		     DataOutputStream out = new DataOutputStream(outToServer);
+		
+		     String msg="";
+		     msg = msg + 'R';
+		     
+		     out.writeUTF(msg);
+		     
+		     InputStream inFromServer = client.getInputStream();
+		     DataInputStream in = new DataInputStream(inFromServer);
+		
+		     str = in.readUTF();
+		     
+		     client.close();
+		     
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+		  
+		  return str;
+
+
+		//return "1. Rule1\n2. Rule2\n";
 	}
 
 	private static void addPopup(Component component, final JPopupMenu popup) {

@@ -1,0 +1,2 @@
+THis contains proper server GUI except submit facility.
+I hope client is also there without time facility.
