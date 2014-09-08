@@ -6,6 +6,7 @@ import javax.swing.JPanel;
 
 import java.awt.*;
 
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.wb.swing.FocusTraversalOnArray;
 
 import java.awt.CardLayout;
@@ -29,7 +30,62 @@ import com.jgoodies.forms.layout.RowSpec;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+import javax.swing.table.DefaultTableModel;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultStyledDocument;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleConstants.ParagraphConstants;
+import javax.swing.text.StyledDocument;
+
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
+import java.io.File;
+import java.util.Vector;
+
+import javax.swing.JOptionPane;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
+//import JudgeApplication.
+
 public class ClientGUI {
+	
+	public class tableData
+	{
+		public int category;
+		public String teamName;
+		public int successful;
+		public int[] score = new int[7];
+		public int[] attempt = new int[7];
+		public int time;
+	
+		tableData()
+		{
+			category=1;
+			teamName="test";
+			for(int i=0;i<7;i++)
+			{
+				score[i]=0;
+				attempt[i]=0;
+			}
+			successful=0;
+			time=0;
+		}
+	};
+
+
+	final static String TEAMNAME = "Team Name";
+	final static String CATEGORY = "Category";
+	final static String TIME = "Time";
+	final static String PROBLEMA = "Problem A";
+	final static String PROBLEMB = "Problem B";
+	final static String PROBLEMC = "Problem C";
+	final static String PROBLEMD = "Problem D";
+	final static String PROBLEME = "Problem E";
+	final static String PROBLEMF = "Problem F";
+	final static String PROBLEMG = "Problem G";
+	final static String DONE = "Successful Submission";
 	
 	final static String PROBLEMS = "PROBLEMS";
 	final static String SUBMIT = "SUBMIT";
@@ -54,8 +110,8 @@ public class ClientGUI {
 	private JLabel lblRules;
 	private JLabel lblSubmit;
 	private JLabel lblLeaderBoard;
-	private JTextField Rules;
-	private JTextField Problems;
+	private JTextPane Rules;
+	private JTextPane Problems;
 	private JTextField UserID;
 	private JScrollPane PaneRules;
 	private JScrollPane PaneProblems;
@@ -68,9 +124,27 @@ public class ClientGUI {
 	private JLabel lblLogin;
 	private JLabel lblNote1;
 	private JLabel lblNote2;
+	private JLabel lblImg;
+	private	JPanel lblPanelImg;
 	private JButton btnLoginSubmit;
 	private JPasswordField Password;
 	private JFileChooser Input;
+	private JMenuBar menuBar;
+	private JMenu file;
+	private JMenuItem edit;
+	private JTextField FileID;
+	private JComboBox QuestionID;
+	private JLabel lblQuestion;
+	private JLabel lblSelectFile;
+	private JButton btnBrowse;
+	private JButton btnSubmit;
+	private JTable table;
+	private JTextField IPServer;
+	private JTextField PortServer;	
+	
+	private Vector<tableData> board = new Vector<tableData>();
+
+	
 	/**
 	 * @wbp.nonvisual location=112,399
 	 */
@@ -83,6 +157,7 @@ public class ClientGUI {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
+			        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 					ClientGUI window = new ClientGUI();
 					window.frame.setVisible(true);
 				} catch (Exception e) {
@@ -110,7 +185,8 @@ public class ClientGUI {
 		//frame.setPreferredSize(new Dimension(500,1000));
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		JPanel lblPanelImg = new JPanel();
+//		JPanel lblPanelImg;
+		lblPanelImg = new JPanel();
 		FlowLayout flowLayout = (FlowLayout) lblPanelImg.getLayout();
 		flowLayout.setVgap(0);
 		lblPanelImg.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -121,64 +197,126 @@ public class ClientGUI {
 		lblPanelImg.setBackground(new Color(0, 0, 0));
 		frame.getContentPane().add(lblPanelImg, BorderLayout.NORTH);
 		
-		JLabel lblImg = new JLabel();
+//		JLabel lblImg;		
+		lblImg = new JLabel();
 		lblImg.setAlignmentY(Component.TOP_ALIGNMENT);
 		lblPanelImg.add(lblImg);
 		lblPanelImg.setSize(new Dimension(lblPanelImg.getSize()));
 		lblImg.setOpaque(true);
 		lblImg.setIcon(lblImgMain);
 		
-		JPanel PanelDisplay = new JPanel();
+//		JPanel PanelDisplay;
+		PanelDisplay = new JPanel();
 		frame.getContentPane().add(PanelDisplay, BorderLayout.CENTER);
 		PanelDisplay.setLayout(new CardLayout(0, 0));
 		
-		JScrollPane PaneRules = new JScrollPane();
-		PanelDisplay.add(PaneRules, RULES);
-		
-		JTextPane Rules = new JTextPane();
-		PaneRules.setViewportView(Rules);
-		
-		JScrollPane PaneProblems = new JScrollPane();
+//		JScrollPane PaneProblems;
+		PaneProblems = new JScrollPane();
+		PaneProblems.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		PaneProblems.setOpaque(true);
 		PanelDisplay.add(PaneProblems, PROBLEMS);
 		
-		JTextPane Problems = new JTextPane();
+//		JTextPane Problems;
+		Problems = new JTextPane();
 		Problems.setEditable(false);
+		Problems.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 15));
 		PaneProblems.setViewportView(Problems);
 		
-		JScrollPane PaneLeaderBoard = new JScrollPane();
+//		JScrollPane PaneRules;
+		PaneRules = new JScrollPane();
+		PanelDisplay.add(PaneRules, RULES);
+		
+//		JTextPane Rules;
+		Rules = new JTextPane();
+		Rules.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 15));
+		Rules.setEditable(false);
+		PaneRules.setViewportView(Rules);
+		
+//		JScrollPane PaneLeaderBoard;
+		PaneLeaderBoard = new JScrollPane();
+		PaneLeaderBoard.setViewportBorder(new EmptyBorder(0, 0, 0, 0));
+		PaneLeaderBoard.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 15));
 		PanelDisplay.add(PaneLeaderBoard, LEADERBOARD);
 		
-		JPanel PanelSubmit = new JPanel();
+		table = new JTable();
+		table.setFont(new Font("Tahoma", Font.PLAIN, 12));
+		table.setEnabled(false);
+		table.setBorder(new EmptyBorder(25, 25, 25, 15));
+		PaneLeaderBoard.setViewportView(table);
+		
+//		JPanel PanelSubmit;
+		PanelSubmit = new JPanel();
 		PanelSubmit.setLayout(null);
 		PanelDisplay.add(PanelSubmit, SUBMIT);
 		
-		JLabel lblSubmitPane = new JLabel("Submit");
+//		JLabel lblSubmitPane;
+		lblSubmitPane = new JLabel("Submit");
 		lblSubmitPane.setHorizontalAlignment(SwingConstants.CENTER);
 		lblSubmitPane.setFont(new Font("Tahoma", Font.BOLD, 17));
 		lblSubmitPane.setBounds(10, 32, 1192, 41);
 		PanelSubmit.add(lblSubmitPane);
 		
-		JFileChooser Input = new JFileChooser();
-		Input.setBounds(323, 66, 582, 397);
-		PanelSubmit.add(Input);
+		lblSelectFile = new JLabel("Select File");
+		lblSelectFile.setBounds(378, 113, 63, 24);
+		PanelSubmit.add(lblSelectFile);
 		
-		JPanel PanelLogin = new JPanel();
+		FileID = new JTextField();
+		FileID.setBounds(451, 115, 326, 20);
+		PanelSubmit.add(FileID);
+		FileID.setColumns(10);
+		
+		btnBrowse = new JButton("Browse");
+		btnBrowse.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				browseFile();
+			}
+		});
+		btnBrowse.setBounds(803, 114, 89, 23);
+		PanelSubmit.add(btnBrowse);
+		
+		lblQuestion = new JLabel("Question");
+		lblQuestion.setBounds(378, 171, 63, 24);
+		PanelSubmit.add(lblQuestion);
+		
+		String[] items = {PROBLEMA,PROBLEMB,PROBLEMC,PROBLEMD,PROBLEME,PROBLEMF,PROBLEMG};
+		QuestionID = new JComboBox(items);
+		QuestionID.setBounds(451, 173, 326, 20);
+		
+		PanelSubmit.add(QuestionID);
+		
+		btnSubmit = new JButton("Submit");
+		btnSubmit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				submitFile();
+			}
+		});
+		btnSubmit.setBounds(572, 250, 89, 23);
+		PanelSubmit.add(btnSubmit);
+		
+//		JFileChooser Input;
+		Input = new JFileChooser();
+		Input.setBounds(288, 65, 582, 397);
+		
+//		JPanel PanelLogin;
+		PanelLogin = new JPanel();
 		PanelDisplay.add(PanelLogin, LOGIN);
 		PanelLogin.setLayout(null);
 		
-		JLabel lblLogin = new JLabel("Login");
+//		JLabel lblLogin;
+		lblLogin = new JLabel("Login");
 		lblLogin.setHorizontalAlignment(SwingConstants.CENTER);
 		lblLogin.setFont(new Font("Tahoma", Font.BOLD, 17));
 		lblLogin.setBounds(10, 32, 1192, 41);
 		PanelLogin.add(lblLogin);
 		
-		JLabel lblTeamName = new JLabel("Team Name");
+//		JLabel lblTeamName;
+		lblTeamName = new JLabel("Team Name");
 		lblTeamName.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblTeamName.setBounds(464, 222, 73, 53);
 		PanelLogin.add(lblTeamName);
 		
-		JLabel lblPassword = new JLabel("Password");
+//		JLabel lblPassword;
+		lblPassword = new JLabel("Password");
 		lblPassword.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblPassword.setBounds(464, 279, 73, 34);
 		PanelLogin.add(lblPassword);
@@ -192,21 +330,30 @@ public class ClientGUI {
 		Password.setBounds(587, 284, 125, 27);
 		PanelLogin.add(Password);
 		
-		JButton btnLoginSubmit = new JButton("Submit");
+//		JButton btnLoginSubmit
+		btnLoginSubmit = new JButton("Submit");
+		btnLoginSubmit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				getLoginDetails();
+			}
+		});
 		btnLoginSubmit.setBounds(522, 357, 89, 23);
 		PanelLogin.add(btnLoginSubmit);
-		
-		JLabel lblNote1 = new JLabel("Note: If you forget password, contact admins for support.");
+	
+//		JLabel lblNote1;
+		lblNote1 = new JLabel("Note: If you forget password, contact admins for support.");
 		lblNote1.setHorizontalAlignment(SwingConstants.CENTER);
 		lblNote1.setBounds(411, 405, 385, 27);
 		PanelLogin.add(lblNote1);
 		
-		JLabel lblNote2 = new JLabel("The Login Team Name and Password should be recieved from Admins and you should only login when you are asked to do so.");
+//		JLabel lblNote2;
+		lblNote2 = new JLabel("The Login Team Name and Password should be recieved from Admins and you should only login when you are asked to do so.");
 		lblNote2.setHorizontalAlignment(SwingConstants.CENTER);
 		lblNote2.setBounds(182, 176, 810, 14);
 		PanelLogin.add(lblNote2);
 		
-		JPanel Panel = new JPanel();
+//		JPanel Panel; 
+		Panel = new JPanel();
 		Panel.setBackground(new Color(255, 250, 205));
 		Panel.setMaximumSize(new Dimension(150, 0));
 		Panel.setPreferredSize(new Dimension(150, 0));
@@ -216,7 +363,7 @@ public class ClientGUI {
 		Panel.setLayout(new BoxLayout(Panel, BoxLayout.Y_AXIS));
 		frame.getContentPane().add(Panel, BorderLayout.WEST);
 		
-		JLabel lblProbA;
+//		JLabel lblProbA;
 		lblProbA = new JLabel("Problem A");
 		lblProbA.addMouseListener(new MouseAdapter() {
 			@Override
@@ -237,8 +384,14 @@ public class ClientGUI {
 		lblProbA.setLocation(new Point(10, 10));		
 		Panel.add(lblProbA);
 
-		JLabel lblProbB;
+//		JLabel lblProbB;
 		lblProbB = new JLabel("Problem B");
+		lblProbB.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				ShowProblem('B');
+			}
+		});
 		lblProbB.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblProbB.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		lblProbB.setForeground(new Color(0,0,255));
@@ -251,8 +404,14 @@ public class ClientGUI {
 		lblProbB.setLocation(new Point(10, 10));		
 		Panel.add(lblProbB);
 		
-		JLabel lblProbC;
+//		JLabel lblProbC;
 		lblProbC = new JLabel("Problem C");
+		lblProbC.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				ShowProblem('C');
+			}
+		});
 		lblProbC.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblProbC.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		lblProbC.setForeground(new Color(0,0,255));
@@ -265,8 +424,14 @@ public class ClientGUI {
 		lblProbC.setLocation(new Point(10, 10));		
 		Panel.add(lblProbC);
 		
-		JLabel lblProbD;
+//		JLabel lblProbD;
 		lblProbD = new JLabel("Problem D");
+		lblProbD.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				ShowProblem('D');
+			}
+		});
 		lblProbD.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblProbD.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		lblProbD.setForeground(new Color(0,0,255));
@@ -279,8 +444,14 @@ public class ClientGUI {
 		lblProbD.setLocation(new Point(10, 10));		
 		Panel.add(lblProbD);
 		
-		JLabel lblProbE;
+//		JLabel lblProbE;
 		lblProbE = new JLabel("Problem E");
+		lblProbE.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				ShowProblem('E');
+			}
+		});
 		lblProbE.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblProbE.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		lblProbE.setForeground(new Color(0,0,255));
@@ -293,8 +464,14 @@ public class ClientGUI {
 		lblProbE.setLocation(new Point(10, 10));		
 		Panel.add(lblProbE);
 		
-		JLabel lblProbF;
+//		JLabel lblProbF;
 		lblProbF = new JLabel("Problem F");
+		lblProbF.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				ShowProblem('F');
+			}
+		});
 		lblProbF.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblProbF.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		lblProbF.setForeground(new Color(0,0,255));
@@ -307,8 +484,14 @@ public class ClientGUI {
 		lblProbF.setLocation(new Point(10, 10));		
 		Panel.add(lblProbF);
 		
-		JLabel lblProbG;
+//		JLabel lblProbG;
 		lblProbG = new JLabel("Problem G");
+		lblProbG.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				ShowProblem('G');
+			}
+		});
 		lblProbG.setFont(new Font("Tahoma", Font.BOLD, 12));
 		lblProbG.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		lblProbG.setForeground(new Color(0,0,255));
@@ -321,9 +504,15 @@ public class ClientGUI {
 		lblProbG.setLocation(new Point(10, 10));		
 		Panel.add(lblProbG);
 
-		JLabel lblSubmit;
-		
-		JLabel lblRules = new JLabel("Rules");
+//		JLabel lblRules		
+		lblRules = new JLabel("Rules");
+		lblRules.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		lblRules.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				showRules();
+			}
+		});
 		lblRules.setSize(new Dimension(50, 70));
 		lblRules.setPreferredSize(new Dimension(150, 0));
 		lblRules.setMinimumSize(new Dimension(100, 100));
@@ -334,7 +523,17 @@ public class ClientGUI {
 		lblRules.setFont(new Font("Tahoma", Font.BOLD, 14));
 		lblRules.setBorder(null);
 		Panel.add(lblRules);
+	
+//		JLabel lblSubmit;
 		lblSubmit = new JLabel("Submit");
+		lblSubmit.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				FileID.setText("");
+				submitClicked();
+			}
+		});
+		
 		lblSubmit.setFont(new Font("Tahoma", Font.BOLD, 14));
 		lblSubmit.setCursor(new Cursor(Cursor.HAND_CURSOR));
 		lblSubmit.setForeground(new Color(0,0,255));
@@ -347,50 +546,384 @@ public class ClientGUI {
 		lblSubmit.setLocation(new Point(10, 10));		
 		Panel.add(lblSubmit);
 		
-		JLabel lblLeaderboard;
-		lblLeaderboard = new JLabel("LeaderBoard");
-		lblLeaderboard.setFont(new Font("Tahoma", Font.BOLD, 14));
-		lblLeaderboard.setCursor(new Cursor(Cursor.HAND_CURSOR));
-		lblLeaderboard.setForeground(new Color(0,0,255));
-		lblLeaderboard.setHorizontalAlignment(SwingConstants.CENTER);
-		lblLeaderboard.setMinimumSize(new Dimension(100, 100));
-		lblLeaderboard.setMaximumSize(new Dimension(150, 50));
-		lblLeaderboard.setBorder(null);
-		lblLeaderboard.setSize(new Dimension(50, 70));
-		lblLeaderboard.setPreferredSize(new Dimension(150, 0));
-		lblLeaderboard.setLocation(new Point(10, 10));		
-		Panel.add(lblLeaderboard);
+//		JLabel lblLeaderboard;
+		lblLeaderBoard = new JLabel("LeaderBoard");
+		lblLeaderBoard.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				showLeaderBoard();
+			}
+		});
+		lblLeaderBoard.setFont(new Font("Tahoma", Font.BOLD, 14));
+		lblLeaderBoard.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		lblLeaderBoard.setForeground(new Color(0,0,255));
+		lblLeaderBoard.setHorizontalAlignment(SwingConstants.CENTER);
+		lblLeaderBoard.setMinimumSize(new Dimension(100, 100));
+		lblLeaderBoard.setMaximumSize(new Dimension(150, 50));
+		lblLeaderBoard.setBorder(null);
+		lblLeaderBoard.setSize(new Dimension(50, 70));
+		lblLeaderBoard.setPreferredSize(new Dimension(150, 0));
+		lblLeaderBoard.setLocation(new Point(10, 10));		
+		Panel.add(lblLeaderBoard);
 
-		JMenuBar menuBar = new JMenuBar();
+//		JMenuBar menuBar;
 		
-		JMenu file=new JMenu("File");
+		menuBar = new JMenuBar();
+		
+//		JMenu file;
+		file=new JMenu("File");
 		file.setIcon(null);
 		file.setMnemonic(KeyEvent.VK_F);
 		menuBar.add(file);
 		
-		JMenu edit=new JMenu("Edit");
-		edit.setMnemonic(KeyEvent.VK_E);
-		menuBar.add(edit);
-		
-		JMenuItem close = new JMenuItem("Close");
-		file.add(close);
+//		JMenuItem close;
+		edit = new JMenuItem("Configeration");
+		edit.addActionListener(new ActionListener(){
+	        
+			public void actionPerformed(ActionEvent e)
+	        {
+				Object[] message = {
+						"IP Address: " , IPServer,
+						"Port Number"  , PortServer
+				};
+				
+				JOptionPane.showConfirmDialog(null, message, "Configeration", JOptionPane.OK_CANCEL_OPTION);
+	        }
+		});
+		file.add(edit);
 
-		JMenuItem settings = new JMenuItem("Configeration");
-		edit.add(settings);
-		
-		JMenu credits=new JMenu("Credits");
-		credits.setMnemonic(KeyEvent.VK_C);
-		menuBar.add(credits);
 		frame.setJMenuBar(menuBar);
 		
+		IPServer = new JTextField();
+		PortServer = new JTextField();		
+		
+		displayLogin();
+	}
+	protected void showLeaderBoard() {
+
+		String[] columns = {TEAMNAME,CATEGORY,PROBLEMA,PROBLEMB,PROBLEMC,PROBLEMD,PROBLEME,PROBLEMF,PROBLEMG,DONE,TIME};
+//		String[] columns1 = {TEAMNAME,CATEGORY,PROBLEMA,PROBLEMB,PROBLEMC,PROBLEMD,PROBLEME,PROBLEMF,PROBLEMG,DONE,TIME};
+
+		String[][] data = getLeaderData();
+
+		DefaultTableModel model = new DefaultTableModel(data,columns);
+		table.setModel(model);
+		
+		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
+		cl.show(PanelDisplay,LEADERBOARD);
+	}
+
+	private String[][] getLeaderData() {
+		fillData();
+		
+		String[][] str = new String[board.size()][11];
+		
+		for(int i=0;i<board.size();i++)
+		{
+			str[i][0] = board.elementAt(i).teamName;
+			str[i][1] = String.valueOf(board.elementAt(i).category);
+			
+			for(int j=0;j<7;j++)
+			{
+				str[i][2+j] = String.valueOf(board.elementAt(i).score[j]) + "\n   (" + String.valueOf(board.elementAt(i).attempt[j]) + ")";
+			}
+			
+			str[i][9] = String.valueOf(board.elementAt(i).successful);
+			str[i][10] = String.valueOf(board.elementAt(i).time);
+		}
+		
+		return str;
+	}
+	
+	private void fillData()
+	{
+		//TODO
+		
+		board.addElement(new tableData());
+		board.addElement(new tableData());
+		board.addElement(new tableData());
+		return;
+	}
+
+	protected void getLoginDetails() {
+		
+		if(checkValidLogin(UserID.getText(),Password.getPassword()))
+		{
+			lblProbA.setVisible(true);
+			lblProbB.setVisible(true);
+			lblProbC.setVisible(true);
+			lblProbD.setVisible(true);
+			lblProbE.setVisible(true);
+			lblProbF.setVisible(true);
+			lblProbG.setVisible(true);
+			lblLeaderBoard.setVisible(true);
+			lblSubmit.setVisible(true);
+			lblRules.setVisible(true);
+			
+			showRules();
+		}
+		else
+		{
+			JOptionPane.showMessageDialog(PanelLogin, "UserName or Password did not match!","Error!",JOptionPane.WARNING_MESSAGE);
+		}
+	}
+
+	private boolean checkValidLogin(String text, char[] password2) {
+		
+		return true;
+	}
+
+	private void displayLogin() {
+		lblProbA.setVisible(false);
+		lblProbB.setVisible(false);
+		lblProbC.setVisible(false);
+		lblProbD.setVisible(false);
+		lblProbE.setVisible(false);
+		lblProbF.setVisible(false);
+		lblProbG.setVisible(false);
+		lblLeaderBoard.setVisible(false);
+		lblSubmit.setVisible(false);
+		lblRules.setVisible(false);
+		
+		CardLayout cl = (CardLayout)PanelDisplay.getLayout();
+		cl.show(PanelDisplay, LOGIN);		
+	}
+	
+	protected void submitFile() {
+		// TODO Auto-generated method stub
+		if(FileID.getText().length()<4)
+			browseFile();
+		char c = (char) ('A' + QuestionID.getSelectedIndex());
+		
+	}
+
+	protected void browseFile() {
+		
+		int returnVal = Input.showOpenDialog(PanelSubmit);
+
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            File file = Input.getSelectedFile();
+            FileID.setText(file.toString());
+        }
+	}
+
+	protected void submitClicked() {
+
+		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
+		cl.show(PanelDisplay, SUBMIT);
 	}
 
 	protected void ShowProblem(char c) {
 		
+		Problems.setText("");
+		StyledDocument question = (StyledDocument) Problems.getDocument();
+		
+		Style style1 = question.addStyle("Style1", null);
+		StyleConstants.setBold(style1, true);
+		StyleConstants.setFontSize(style1, 18);
+		StyleConstants.setUnderline(style1, true);
+		StyleConstants.setSpaceAbove(style1, 30);
+		StyleConstants.setFontFamily(style1, Font.SANS_SERIF);
+
+		Style style2 = question.addStyle("Style2", null);
+		StyleConstants.setBold(style2, true);
+		StyleConstants.setFontSize(style2, 14);
+		StyleConstants.setUnderline(style2, true);
+		StyleConstants.setSpaceAbove(style2, 30);
+		StyleConstants.setFontFamily(style2, Font.SANS_SERIF);
+
+		Style style3 = question.addStyle("Style3", null);
+		StyleConstants.setBold(style3, false);
+		StyleConstants.setFontSize(style3, 12);
+		StyleConstants.setUnderline(style3, false);
+		StyleConstants.setSpaceAbove(style3, 30);
+		StyleConstants.setFontFamily(style3, Font.SANS_SERIF);
+
+		// Add Problem Name in question set		
+		
+		try {
+			question.insertString(0, "Problem "+ c + ": " + getProblemName(c) +"\n", style1);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Problem Description in question set
+		
+		try {
+			question.insertString(question.getLength()+1, "\n" + getProblemDesc(c) +"\n\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+	
+		// Add Input format in question set
+		
+		try {
+			question.insertString(question.getLength()+1, "Input Format\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Input format Description
+		
+		try {
+			question.insertString(question.getLength()+1, getInputFormat(c) +"\n\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Output format in question set
+		
+		try {
+			question.insertString(question.getLength()+1, "Output Format\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Output format Description in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, getOutputFormat(c) +"\n\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Sample Input in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, "\nSample Input\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+
+		// Add Sample Input Description in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, getSampleInput(c) +"\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}		
+
+		// Add Sample Output in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, "Sample Output\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Sample Output Description in problem set
+		
+		try {
+			question.insertString(question.getLength()+1, getSampleOutput(c) +"\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Constraints
+		
+		try {
+			question.insertString(question.getLength()+1, "Constraints\n", style2);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Constraints Description in question set
+		
+		try {
+			question.insertString(question.getLength()+1, getConstraints(c) +"\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
 		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
 		cl.show(PanelDisplay, PROBLEMS);
+				
+	}
+	
+	static String getProblemName(char c)
+	{
+		return "Design Pro" ;
+	}
+
+	static String getProblemDesc(char c)
+	{
+		return "Design Pro consists of multiple domains like web designing, animations and graphic designing. This event attracts a large number of participants each year where they compete to prove their creative mettle for designing. Here, a participant is required to make a figure of mountain on a hypothetical Photoshop Software. This Photoshop has only two tools in it, one draws '/' and the other draws '\'. You will be given N, number of times each tool is used. You have to output number of figures of mountain possible.\nE.g. N=2\nThen, the number of figures of mountains possible is 2" ;
+	}
+	
+	static String getInputFormat(char c)
+	{
+		return "There is a single positive integer T on the first line of input. It stands for the number of cases to follow. Each case consists of a number N, the number of time each tool was used." ;
+	}
+
+	static String getOutputFormat(char c)
+	{
+		return "Output consists of T lines, each line has an integer representing the number of figures of mountain possible. The answer has to be printed modulo 1000000007." ;
+	}
+
+	static String getSampleInput(char c)
+	{
+		return "3\n4\n5\n6\n" ;
+	}
+
+	static String getSampleOutput(char c)
+	{
+		return "3\n4\n5\n6\n" ;
+	}
+
+	static String getConstraints(char c)
+	{
+		return "Time Limit: 2sec\nCode Limit: 50000Bytes\nLanguage Allowed: C++\n" ;
+	}	
+
+	protected void showRules()
+	{
+		Rules.setText("");
+		StyledDocument question = (StyledDocument) Rules.getDocument();
 		
+		Style style1 = question.addStyle("Style1", null);
+		StyleConstants.setBold(style1, true);
+		StyleConstants.setFontSize(style1, 18);
+		StyleConstants.setUnderline(style1, true);
+		StyleConstants.setSpaceAbove(style1, 30);
+		StyleConstants.setFontFamily(style1, Font.SANS_SERIF);
+
+		Style style2 = question.addStyle("Style2", null);
+		StyleConstants.setBold(style2, true);
+		StyleConstants.setFontSize(style2, 14);
+		StyleConstants.setUnderline(style2, true);
+		StyleConstants.setSpaceAbove(style2, 30);
+		StyleConstants.setFontFamily(style2, Font.SANS_SERIF);
+
+		Style style3 = question.addStyle("Style3", null);
+		StyleConstants.setBold(style3, false);
+		StyleConstants.setFontSize(style3, 12);
+		StyleConstants.setUnderline(style3, false);
+		StyleConstants.setSpaceAbove(style3, 30);
+		StyleConstants.setFontFamily(style3, Font.SANS_SERIF);
+
+		// Add Rules in question set
 		
+		try {
+			question.insertString(0, "General Rules\n\n", style1);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}
+		
+		// Add Rules Description in question set
+		
+		try {
+			question.insertString(question.getLength()+1, "\n" + getRuleStr() +"\n\n", style3);
+		} catch (BadLocationException e) {
+			e.printStackTrace();
+		}	
+
+		CardLayout cl = (CardLayout) PanelDisplay.getLayout();
+		cl.show(PanelDisplay, RULES);
+
+	}	
+	
+	private String getRuleStr() {
+		return "1. Rule1\n2. Rule2\n";
 	}
 
 	private static void addPopup(Component component, final JPopupMenu popup) {
