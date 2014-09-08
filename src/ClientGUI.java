@@ -6,6 +6,7 @@ import javax.swing.JPanel;
 
 import java.awt.*;
 
+import org.apache.commons.io.IOUtils;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.wb.swing.FocusTraversalOnArray;
 
@@ -41,9 +42,12 @@ import javax.swing.text.StyledDocument;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -54,54 +58,93 @@ import java.util.Vector;
 import javax.swing.JOptionPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
-//import JudgeApplication.
 
-public class ClientGUI {
-	
-	public class tableData
+import java.io.Serializable;
+
+class tableData
+{
+	public int category;
+	public String Password;
+	public String teamName;
+	public int successful;
+	public int[] score = new int[7];
+	public int[] attempt = new int[7];
+	public int[] totalAttempt = new int[7];
+	public int time;
+	public boolean loggedIn;
+
+	public tableData()
 	{
-		public int category;
-		public String Password;
-		public String teamName;
-		public int successful;
-		public int[] score = new int[7];
-		public int[] attempt = new int[7];
-		public int[] totalAttempt = new int[7];
-		public int time;
-		public boolean loggedIn;
-	
-		tableData()
+		category=1;
+		teamName="test";
+		Password="";
+		for(int i=0;i<7;i++)
 		{
-			category=1;
-			teamName="test";
-			Password="";
-			for(int i=0;i<7;i++)
-			{
-				score[i]=0;
-				attempt[i]=0;
-				totalAttempt[i]=0;
-			}
-			successful=0;
-			time=0;
-			loggedIn=false;
-			
+			score[i]=0;
+			attempt[i]=0;
+			totalAttempt[i]=0;
+		}
+		successful=0;
+		time=0;
+		loggedIn=false;
+		
+	}
+	
+	public tableData(tableData temp)
+	{
+		category=temp.category;
+		teamName=temp.teamName;
+		Password="";
+		for(int i=0;i<7;i++)
+		{
+			score[i]=temp.score[i];
+			attempt[i]=temp.attempt[i];
+		}
+		successful=temp.successful;
+		time=temp.time;
+		loggedIn=temp.loggedIn;
+	}
+	
+	@Override
+	public String toString(){
+		String str = "";
+		
+		str = String.valueOf(category) + " " + "-" + " " + teamName + " " + String.valueOf(successful) + " " ;
+		for(int i=0;i<7;i++)
+		{
+			str = str + String.valueOf(score[i]) + " " + String.valueOf(attempt[i]) + " " + String.valueOf(totalAttempt[i]) + " ";
 		}
 		
-		tableData(tableData temp)
+		str= str + String.valueOf(time) + " " + String.valueOf(loggedIn);
+		
+		return str;
+	}
+	
+	public tableData(String str)
+	{
+		String token[] = str.split(" ");
+
+		int cnt=0;
+		
+		category = Integer.parseInt(token[cnt++]);
+		Password = token[cnt++];
+		teamName = token[cnt++];
+		successful = Integer.parseInt(token[cnt++]);
+		
+		for(int i=0;i<7;i++)
 		{
-			category=temp.category;
-			teamName=temp.teamName;
-			Password="";
-			for(int i=0;i<7;i++)
-			{
-				score[i]=temp.score[i];
-				attempt[i]=temp.attempt[i];
-			}
-			successful=temp.successful;
-			time=temp.time;
-			loggedIn=temp.loggedIn;
+			score[i] = Integer.parseInt(token[cnt++]);
+			attempt[i] = Integer.parseInt(token[cnt++]);
+			totalAttempt[i] = Integer.parseInt(token[cnt++]);
 		}
-	};
+		
+		time = Integer.parseInt(token[cnt++]);
+		loggedIn = Boolean.getBoolean(token[cnt++]);
+	}
+};
+
+
+public class ClientGUI {
 
 	final static int MAX_TIME = 3600*3;
 	final static String TEAMNAME = "Team Name";
@@ -172,7 +215,8 @@ public class ClientGUI {
 	private JTextField PortServerSubmit;	
 	private JTextField PortServerProblem;	
 	private Vector<tableData> board = new Vector<tableData>();
-	private int Time;
+	private static int Time;
+	private static JLabel lblTimeRemaining;
 	
 	/**
 	 * @wbp.nonvisual location=112,399
@@ -194,7 +238,49 @@ public class ClientGUI {
 				}
 			}
 		});
+		
+		Thread startTime= new Thread(new Runnable() {
+			public void run() {
+				try {
+	 					reduceTime();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		startTime.start();
+
 	}
+
+	protected static Object reduceTime() {
+
+		if(Time>0 && Time<MAX_TIME)
+		{
+			Time--;
+			int min=Time/60;
+			int sec=Time%60;
+			
+			if(Time>60)
+				lblTimeRemaining.setText("Time Remaining: "+ String.valueOf(min) + "min " +  String.valueOf(sec) + "sec");
+			else
+				lblTimeRemaining.setText("Time Remaining: "+ String.valueOf(Time) + "sec");
+
+		}
+		
+
+		try {
+			
+		    Thread.sleep(1000);
+
+		} catch(InterruptedException ex) {
+		    Thread.currentThread().interrupt();
+		}	
+	    
+		return reduceTime();
+	    
+	}
+
 
 	/**
 	 * Create the application.
@@ -624,9 +710,12 @@ public class ClientGUI {
 
 		frame.setJMenuBar(menuBar);
 		
-		IPServer = new JTextField();
-		PortServerSubmit = new JTextField();		
-		PortServerProblem = new JTextField();
+		lblTimeRemaining = new JLabel("Time Remaining: ");
+		menuBar.add(lblTimeRemaining);
+		
+		IPServer = new JTextField("192.168.0.102");
+		PortServerSubmit = new JTextField("5000");		
+		PortServerProblem = new JTextField("6000");
 		
 		Time = new Integer(MAX_TIME);
 	
@@ -685,26 +774,25 @@ public class ClientGUI {
 	         out.writeUTF(msg);
 	         
 	         InputStream inFromServer = client.getInputStream();
-	         ObjectInputStream in = new ObjectInputStream(inFromServer);
 	         DataInputStream dis = new DataInputStream(inFromServer);
+	         int n =Integer.parseInt(dis.readUTF());
 	         
 	         board.clear();
-
-	         int n =Integer.parseInt(dis.readUTF());
 	         
 	         while(n>0)
 	         {	
 	        	 n=n-1;
-				 tableData data;
+
 				 try {
-					 	data = (tableData) in.readObject();
-					 	data.Password="";
-					 	board.addElement(data);
-				 	} catch (ClassNotFoundException e) {
+					 	String str = dis.readUTF();
+					 	System.out.println(str);
+					 	board.addElement(new tableData(str));
+				 	} catch (Exception e) {
 					e.printStackTrace();
 				}
 	         }
 	         
+	         Time = dis.readInt();
 	         client.close();
 	      }catch(IOException e){
 	    	  e.printStackTrace();
@@ -728,10 +816,7 @@ public class ClientGUI {
 			
 			showRules();
 		}
-		else
-		{
-			JOptionPane.showMessageDialog(PanelLogin, "UserName or Password did not match!","Error!",JOptionPane.WARNING_MESSAGE);
-		}
+				
 	}
 
 	private boolean checkValidLogin(String text, char[] password2) {
@@ -741,7 +826,9 @@ public class ClientGUI {
 	      
 	      try
 	      {
-	         Socket client = new Socket(serverName, port);
+	    	 System.out.println(serverName);
+	    	 System.out.println(port);
+	    	 Socket client = new Socket(serverName, port);
 	         OutputStream outToServer = client.getOutputStream();
 	         DataOutputStream out = new DataOutputStream(outToServer);
 
@@ -759,15 +846,18 @@ public class ClientGUI {
 	         out.writeUTF(password);
 	         
  	     	 JOptionPane.showMessageDialog(null, in.readUTF(), "Message", JOptionPane.OK_OPTION);
-	         
-	         client.close();
-	         
-	         return in.readBoolean();
+ 	     	 boolean status = in.readBoolean();
+ 	     	 
+ 	     	 client.close();
+ 	     	 
+	         return status;
 	         
 	      }catch(IOException e){
 	    	  e.printStackTrace();
 	      }
-	      
+
+	      JOptionPane.showMessageDialog(PanelLogin, "Unable to connect to Network!","Error!",JOptionPane.WARNING_MESSAGE);
+  
 	      return false;
 	}
 
@@ -788,11 +878,87 @@ public class ClientGUI {
 	}
 	
 	protected void submitFile() {
-		// TODO Auto-generated method stub
+		
 		if(FileID.getText().length()<4)
 			browseFile();
+		
 		char c = (char) ('A' + QuestionID.getSelectedIndex());
 		
+		String serverName = IPServer.getText();
+		int port = Integer.parseInt(PortServerSubmit.getText());
+		String str = "";
+		  
+		  try
+		  {
+		     Socket client = new Socket(serverName, port);
+
+		     DataOutputStream outData = new DataOutputStream(client.getOutputStream());
+		     DataInputStream inData = new DataInputStream(client.getInputStream());
+		
+		     String msg="";
+		     msg = msg + 'S';
+		     msg = msg + c;
+
+		     outData.writeUTF(msg);
+		     outData.writeUTF(UserID.getText());
+		     
+		     System.out.println("File Name: " + FileID.getText()); 
+			 
+		     File transferFile = new File (FileID.getText());
+		     
+		     FileInputStream fis = new FileInputStream(transferFile);
+		     int res = IOUtils.copy(fis, outData);
+		     fis.close();
+		     outData.close();
+		     
+		     inData.close();
+		     client.close();
+/*		     long length = transferFile.length();
+		     if (length > Integer.MAX_VALUE) {
+		         System.out.println("File is too large.");
+		     }
+		     
+		     byte[] bytes = new byte[(int) length];
+		     
+		     FileInputStream fis = new FileInputStream(transferFile);
+		     BufferedInputStream bis = new BufferedInputStream(fis);
+		     BufferedOutputStream out = new BufferedOutputStream(client.getOutputStream());
+
+		     int count;
+
+		     while ((count = bis.read(bytes)) > 0) {
+		         out.write(bytes, 0, count);
+		     }
+
+		     out.flush();
+//		     /* byte [] bytearray  = new byte [(int)transferFile.length()];
+	//		  FileInputStream fin = new FileInputStream(transferFile);
+		//	  BufferedInputStream bin = new BufferedInputStream(fin);
+			//  bin.read(bytearray,0,bytearray.length);
+			  
+//			  OutputStream os = client.getOutputStream();
+	//		  System.out.println("Sending Files...");
+	//		  os.write(bytearray,0,bytearray.length);
+	//		  os.flush();
+	//		  System.out.println("File transfer complete");
+		//	 
+			 InputStream inFromServer = client.getInputStream();
+			 DataInputStream in = new DataInputStream(inFromServer);
+			
+			 str = in.readUTF();
+			 Time = in.readInt();
+
+
+		     out.close();
+			 fis.close();
+		     bis.close();
+			 client.close();
+*/			 
+		  }catch(IOException e){
+			  e.printStackTrace();
+		  }
+
+			JOptionPane.showMessageDialog(null, "Submitted!", "Submission Result", JOptionPane.OK_OPTION);		  
 	}
 
 	protected void browseFile() {
@@ -962,7 +1128,7 @@ public class ClientGUI {
 	         DataInputStream in = new DataInputStream(inFromServer);
 	
 	         str = in.readUTF();
-	         
+	         Time = in.readInt();
 	         client.close();
 	         
 	      }catch(IOException e){
@@ -998,6 +1164,7 @@ public class ClientGUI {
 		     DataInputStream in = new DataInputStream(inFromServer);
 		
 		     str = in.readUTF();
+	         Time = in.readInt();
 		     
 		     client.close();
 		     
@@ -1034,6 +1201,7 @@ public class ClientGUI {
 		     DataInputStream in = new DataInputStream(inFromServer);
 		
 		     str = in.readUTF();
+	         Time = in.readInt();
 		     
 		     client.close();
 		     
@@ -1070,6 +1238,7 @@ public class ClientGUI {
 		     DataInputStream in = new DataInputStream(inFromServer);
 		
 		     str = in.readUTF();
+	         Time = in.readInt();
 		     
 		     client.close();
 		     
@@ -1108,6 +1277,7 @@ public class ClientGUI {
 		     DataInputStream in = new DataInputStream(inFromServer);
 		
 		     str = in.readUTF();
+	         Time = in.readInt();
 		     
 		     client.close();
 		     
@@ -1145,6 +1315,7 @@ public class ClientGUI {
 		     DataInputStream in = new DataInputStream(inFromServer);
 		
 		     str = in.readUTF();
+	         Time = in.readInt();
 		     
 		     client.close();
 		     
@@ -1183,6 +1354,7 @@ public class ClientGUI {
 		     DataInputStream in = new DataInputStream(inFromServer);
 		
 		     str = in.readUTF();
+	         Time = in.readInt();
 		     
 		     client.close();
 		     
@@ -1264,6 +1436,7 @@ public class ClientGUI {
 		     DataInputStream in = new DataInputStream(inFromServer);
 		
 		     str = in.readUTF();
+	         Time = in.readInt();
 		     
 		     client.close();
 		     
@@ -1272,9 +1445,6 @@ public class ClientGUI {
 		  }
 		  
 		  return str;
-
-
-		//return "1. Rule1\n2. Rule2\n";
 	}
 
 	private static void addPopup(Component component, final JPopupMenu popup) {

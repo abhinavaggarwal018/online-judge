@@ -45,6 +45,7 @@ import javax.swing.text.StyledDocument;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Vector;
 
@@ -58,51 +59,90 @@ import java.net.*;
 import org.apache.commons.io.*;
 //import JudgeApplication.
 
-public class ServerGUI {
-	
-	public class tableData
+class tableData
+{
+	public int category;
+	public String Password;
+	public String teamName;
+	public int successful;
+	public int[] score = new int[7];
+	public int[] attempt = new int[7];
+	public int[] totalAttempt = new int[7];
+	public int time;
+	public boolean loggedIn;
+
+	tableData()
 	{
-		public int category;
-		public String Password;
-		public String teamName;
-		public int successful;
-		public int[] score = new int[7];
-		public int[] attempt = new int[7];
-		public int[] totalAttempt = new int[7];
-		public int time;
-		public boolean loggedIn;
-	
-		tableData()
+		category=1;
+		teamName="test";
+		Password="";
+		for(int i=0;i<7;i++)
 		{
-			category=1;
-			teamName="test";
-			Password="";
-			for(int i=0;i<7;i++)
-			{
-				score[i]=0;
-				attempt[i]=0;
-				totalAttempt[i]=0;
-			}
-			successful=0;
-			time=0;
-			loggedIn=false;
+			score[i]=0;
+			attempt[i]=0;
+			totalAttempt[i]=0;
+		}
+		successful=0;
+		time=0;
+		loggedIn=false;
+		
+	}
+	
+	tableData(tableData temp)
+	{
+		category=temp.category;
+		teamName=temp.teamName;
+		Password="";
+		for(int i=0;i<7;i++)
+		{
+			score[i]=temp.score[i];
+			attempt[i]=temp.attempt[i];
+		}
+		successful=temp.successful;
+		time=temp.time;
+		loggedIn=temp.loggedIn;
+	}
+	
+	@Override
+	public String toString(){
+		String str = "";
+		
+		str = String.valueOf(category) + " " + "-" + " " + teamName + " " + String.valueOf(successful) + " " ;
+		for(int i=0;i<7;i++)
+		{
+			str = str + String.valueOf(score[i]) + " " + String.valueOf(attempt[i]) + " " + String.valueOf(totalAttempt[i]) + " ";
 		}
 		
-		tableData(tableData temp)
+		str= str + String.valueOf(time) + " " + String.valueOf(loggedIn);
+		
+		return str;
+	}
+	
+	public tableData(String str)
+	{
+		String token[] = str.split(" ");
+
+		int cnt=0;
+		
+		category = Integer.parseInt(token[cnt++]);
+		Password = token[cnt++];
+		teamName = token[cnt++];
+		successful = Integer.parseInt(token[cnt++]);
+		
+		for(int i=0;i<7;i++)
 		{
-			category=temp.category;
-			teamName=temp.teamName;
-			Password="";
-			for(int i=0;i<7;i++)
-			{
-				score[i]=temp.score[i];
-				attempt[i]=temp.attempt[i];
-			}
-			successful=temp.successful;
-			time=temp.time;
-			loggedIn=temp.loggedIn;
+			score[i] = Integer.parseInt(token[cnt++]);
+			attempt[i] = Integer.parseInt(token[cnt++]);
+			totalAttempt[i] = Integer.parseInt(token[cnt++]);
 		}
-	};
+		
+		time = Integer.parseInt(token[cnt++]);
+		loggedIn = Boolean.getBoolean(token[cnt++]);
+	}
+};
+
+public class ServerGUI {
+	
 	
 	final static int MAX_TIME = 3600*3;
 	final static String PATH = "E:\\Bytes2014\\Submissions\\";
@@ -220,42 +260,6 @@ public class ServerGUI {
 			}
 			
 		});
-		
-		Thread submit =new Thread(new Runnable() {
-			public void run() {
-				try {
-						acceptSolutions();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		
-		submit.start();
-
-		Thread giveData= new Thread(new Runnable() {
-			public void run() {
-				try {
-	 					giveProblemSet();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		
-		giveData.start();
-		
-		Thread startTime= new Thread(new Runnable() {
-			public void run() {
-				try {
-	 					reduceTime();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-		
-		startTime.start();
 	}
 
 
@@ -289,17 +293,20 @@ public class ServerGUI {
 
 
 	/**
+	 * @throws IOException 
+	 * @throws NumberFormatException 
 	 * @wbp.parser.entryPoint
 	 */
-	static void giveProblemSet() {
+	static void giveProblemSet() throws NumberFormatException, IOException {
+		ServerSocket skt1= new ServerSocket(Integer.parseInt(PortServerProblem.getText()));		
 		
-		while(Time>0)
+		while(true)
 		{
 			try{
 				
-				ServerSocket skt1= new ServerSocket(Integer.parseInt(PortServerProblem.getText()));
-				
-	            Socket server = skt1.accept();
+				System.out.print(PortServerProblem.getText());
+				System.out.print(PortServerProblem.getText());
+				Socket server = skt1.accept();
 	            DataInputStream in = new DataInputStream(server.getInputStream());
 	            
 	            String msg = in.readUTF();
@@ -307,66 +314,97 @@ public class ServerGUI {
 	            
 	            DataOutputStream out =  new DataOutputStream(server.getOutputStream());
 
-	            if(isStarted==true && msg.charAt(0)=='P' && msg.length() >=3 )
+	            if(isStarted==true && msg.charAt(0)=='P' && msg.length() >=3 && Time>0)
 	            {
 	            	if((int)(msg.charAt(1)-'A')>=0 && (int)(msg.charAt(1)-'A')<=7 )
 	            	{
 	            	
 	            		if((msg.charAt(2)-'0')==1)
 	            		{
-	            			out.writeUTF(ProbName[(int)(msg.charAt(1)-'0')]);
+	            			out.writeUTF(ProbName[(int)(msg.charAt(1)-'A')]);
+	            			out.writeInt(Time);
 	            			server.close();
 	            			continue;
 	            		}
 	            		
-	            		if((msg.charAt(2)-'0')==2)
+	            		else if((msg.charAt(2)-'0')==2)
 	            		{
-	            			out.writeUTF(ProbDesc[(int)(msg.charAt(1)-'0')]);
+	            			out.writeUTF(ProbDesc[(int)(msg.charAt(1)-'A')]);
+	            			out.writeInt(Time);
 	            			server.close();
 	            			continue;
 	            		}
 	            		
-	            		if((msg.charAt(2)-'0')==3)
+	            		else if((msg.charAt(2)-'0')==3)
 	            		{
-	            			out.writeUTF(InputFormat[(int)(msg.charAt(1)-'0')]);
+	            			out.writeUTF(InputFormat[(int)(msg.charAt(1)-'A')]);
+	            			out.writeInt(Time);
 	            			server.close();
 	            			continue;
 	            		}
 	            		
 	            		if((msg.charAt(2)-'0')==4)
 	            		{
-	            			out.writeUTF(OutputFormat[(int)(msg.charAt(1)-'0')]);
+	            			out.writeUTF(OutputFormat[(int)(msg.charAt(1)-'A')]);
+	            			out.writeInt(Time);
 	            			server.close();
 	            			continue;
 	            		}
 	            		
-	            		if((msg.charAt(2)-'0')==5)
+	            		else if((msg.charAt(2)-'0')==5)
 	            		{
-	            			out.writeUTF(SampleInput[(int)(msg.charAt(1)-'0')]);
+	            			out.writeUTF(SampleInput[(int)(msg.charAt(1)-'A')]);
+	            			out.writeInt(Time);
 	            			server.close();
 	            			continue;
 	            		}
 	            		
-	            		if((msg.charAt(2)-'0')==6)
+	            		else if((msg.charAt(2)-'0')==6)
 	            		{
-	            			out.writeUTF(SampleOutput[(int)(msg.charAt(1)-'0')]);
+	            			out.writeUTF(SampleOutput[(int)(msg.charAt(1)-'A')]);
+	            			out.writeInt(Time);
 	            			server.close();
 	            			continue;
 	            		}
 	            		
-	            		if((msg.charAt(2)-'0')==7)
+	            		else if((msg.charAt(2)-'0')==7)
 	            		{
-	            			out.writeUTF(Constraints[(int)(msg.charAt(1)-'0')]);
+	            			out.writeUTF(Constraints[(int)(msg.charAt(1)-'A')]);
+	            			out.writeInt(Time);
 	            			server.close();
 	            			continue;
+	            		}
+	            		else
+	            		{
+	            			out.writeUTF("NULL, Error code #0x9001");
+	            			out.writeInt(Time);
+	            			server.close();
+	            			continue;
+		            		
 	            		}
 	            	}
-	            	
+	            	else
+	            	{
+            			out.writeUTF("NULL, Error code #0x9000");
+            			out.writeInt(Time);
+            			server.close();
+            			continue;
+	            		
+	            	}
+	            }
+	            
+	            else if(msg.charAt(0)=='P')
+	            {
+        			out.writeUTF("NULL, Contest not started!");
+        			out.writeInt(Time);
+        			server.close();
+        			continue;
 	            }
 	            
 	            if(msg.charAt(0)=='R')
 	            {
         			out.writeUTF(RulesStr);
+        			out.writeInt(Time);
         			server.close();
         			continue;
 	            }
@@ -375,12 +413,14 @@ public class ServerGUI {
 	            {
 	            	out.writeUTF(String.valueOf(board.size()));
 	            	
+	            	System.out.println(String.valueOf(board.size()));
+    	            
 	            	for(int i=0;i<board.size();i++)
 	            	{
-	    	            ObjectOutputStream out1 =  new ObjectOutputStream(server.getOutputStream());	            		
-	    	            out1.writeObject(board.elementAt(i));
+	    	            out.writeUTF(board.elementAt(i).toString());
 	            	}
-            		server.close();
+        			out.writeInt(Time);
+	            	server.close();
             		continue;
 	            }
 	            
@@ -422,83 +462,294 @@ public class ServerGUI {
 		 * @wbp.parser.entryPoint
 		 */
 		static void acceptSolutions() {
+
+		while(isStarted==false)
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e2) {
+				// TODO Auto-generated catch block
+				e2.printStackTrace();
+			}
 		
-		while(Time>0 && isStarted==true)
-		{
-			try{  
-				ServerSocket submitSolution=new ServerSocket(Integer.parseInt(PortServerSubmit.getText()));  
-				Socket skt=submitSolution.accept();//establishes connection   
-				  
-				DataInputStream dis = new DataInputStream(skt.getInputStream());
-	
-				String str=(String)dis.readUTF();  
-				System.out.println("message= " + str);  
-	
-				DataOutputStream dos = new DataOutputStream(skt.getOutputStream());
-				dos.writeUTF("Accepted");
-				skt.close();
-				continue;
-				
-/*				int code = 0;
-				
-				if(str.length()>=2)
-					if(str.charAt(0)=='S')
-					{
-						code = (Integer) (str.charAt(1)-'0');
-						
-						String teamName = dis.readUTF();
-						
-						int ind=0;
-						for(;ind<board.size();ind++)
+		
+		
+		ServerSocket submitSolution;
+		try {
+			submitSolution = new ServerSocket(Integer.parseInt(PortServerSubmit.getText()));
+			while(Time>0 && isStarted==true)
+			{
+				Socket socket = submitSolution.accept();
+				try{  
+					
+					DataInputStream dis = new DataInputStream(socket.getInputStream());
+					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+
+					String str=(String)dis.readUTF();  
+					System.out.println("message= " + str);  
+
+					int code;
+					
+					if(str.length()>=2)
+						if(str.charAt(0)=='S')
 						{
-							if(board.elementAt(ind).teamName==teamName)
-								break;
-						}
+							code = (Integer) (str.charAt(1)-'A');
+							
+							String teamName = dis.readUTF();
+							System.out.println("teamName= " + teamName);  							
+							int ind=0;
+							for(;ind<board.size();ind++)
+							{
+								if(board.elementAt(ind).teamName.equals(teamName))
+									break;
+							}								
+
+							System.out.println(String.valueOf(ind) + ":" + String.valueOf(board.size()));  							
+						    String path = PATH + teamName + "\\Problem " + String.valueOf(((char)(code+'A')));
+						    String path1 = path + "\\Code" + String.valueOf(board.elementAt(ind).totalAttempt[code]);
+						   
+						    board.elementAt(ind).totalAttempt[code]=board.elementAt(ind).totalAttempt[code]+1;
+						    
+						    File transferPath = new File(path);
+						    File transferFile = new File(path1 + ".cpp");
+						    
+						    transferPath.mkdirs();
+						    transferFile.createNewFile(); 
+
+							FileOutputStream fos = new FileOutputStream(transferFile);
+							int res = IOUtils.copy(dis, fos);
+						    fos.close();
 						
+							System.out.println("Data Written! ");
+						    System.out.println("Data Flushed! ");
+						  
+						    if(ind==board.size())
+							{
+						    	//TODO add data
+						    	socket.close();
+								continue;
+							}
+ 
+						    System.out.println("Done");
+						    
+						    dos.close();
+							socket.close();
+						    
+						    continue;
+						}
+					
+					
+					/*					    Socket socket = null;
+					    InputStream is = null;
+					    FileOutputStream fos = null;
+					    BufferedOutputStream bos = null;
+					    int bufferSize = 0;
+						
+					    try {
+					    	
+					        socket = submitSolution.accept();
+					    } catch (IOException ex) {
+					        System.out.println("Can't accept client connection. ");
+					    }
+
+					    try {
+					        is = socket.getInputStream();
+
+					    } catch (IOException ex) {
+					        System.out.println("Can't get socket input stream. ");
+					    }
+
+					    DataInputStream dis = new DataInputStream(socket.getInputStream());
+					    DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+					    						
+						String str=(String)dis.readUTF();  
+						System.out.println("message= " + str);  
+
+						int code;
+						
+						if(str.length()>=2)
+							if(str.charAt(0)=='S')
+							{
+								code = (Integer) (str.charAt(1)-'A');
+								
+								String teamName = dis.readUTF();
+								System.out.println("teamName= " + teamName);  							
+								int ind=0;
+								for(;ind<board.size();ind++)
+								{
+									if(board.elementAt(ind).teamName.equals(teamName))
+										break;
+								}								
+								System.out.println(String.valueOf(ind) + ":" + String.valueOf(board.size()));  							
+							    try {
+							    	
+							        bufferSize = socket.getReceiveBufferSize();
+							        System.out.println("Buffer size: " + bufferSize);
+							        fos = new FileOutputStream("E:\\abc.cpp");
+							        bos = new BufferedOutputStream(fos);
+		
+							    } catch (FileNotFoundException ex) {
+							        System.out.println("File not found. ");
+							    }
+
+					    byte[] bytes = new byte[bufferSize];
+
+					    int count;
+
+					    while ((count = is.read(bytes)) > 0) {
+					        bos.write(bytes, 0, count);
+					    }
+					    bos.flush();
+					    bos.close();
+					    fos.close();
+					    				    
+					    System.out.println("Data Written! ");
+					    
+					    
+					    System.out.println("Data Flushed! ");
+					  
 						if(ind==board.size())
 						{
-							//TODO return and INVALID team name
+							dos.writeUTF("Invalid Team Name, contact admin for support.");
+							dos.writeInt(Time);
+
+							is.close();
+							dis.close();
+							bos.close();
+						    fos.close();
+						    dos.close();
+						    socket.close();
+						    
+							continue;
 						}
-						
-						String path = PATH + teamName + "\\Problem " + String.valueOf(((char)(code+'A')) + "\\Code" + String.valueOf(board.elementAt(ind).totalAttempt[++code]));
-					    String message = "";					
-						FileOutputStream fos = new FileOutputStream(path + ".cpp");
-						IOUtils.copy(dis, fos);
-						fos.close();
-						
-						ProcessBuilder pb = new ProcessBuilder("g++ " + "-o " + path + ".exe " + path + ".cpp");
-						pb.directory(new File("C:\\MinGW\\bin"));
-						pb.redirectErrorStream(true);
-						
-						Process process = pb.start();
-						InputStream stderr = process.getInputStream();
-					    InputStreamReader isr = new InputStreamReader(stderr);
-					    BufferedReader br = new BufferedReader(isr);
-					    String line = null;
-	
-					    while ((line = br.readLine()) != null) {
-					    	//TODO  message = message + line + "\n";
-					    	//TODO compilation error
-					    	//TODO return;
-					    }
+
+						dos.writeUTF("Accepted");
+					    dos.writeInt(Time);
 					    
-					    process.waitFor();
-					    
-					  //TODO 				    Now just do some run of application
-					    
+					    is.close();
+					    dis.close();
+					    dos.close();
+					    socket.close();
+					    continue;
+					}*/
+/*				    int filesize=1000000; 
+				    int bytesRead;
+				    int currentTot = 0;					
+					
+					DataInputStream dis = new DataInputStream(skt.getInputStream());
+		
+					String str=(String)dis.readUTF();  
+					System.out.println("message= " + str);  
+		
+					DataOutputStream dos = new DataOutputStream(skt.getOutputStream());
+					
+					int code = 0;
+				  
+					
+					if(str.length()>=2)
+						if(str.charAt(0)=='S')
+						{
+							code = (Integer) (str.charAt(1)-'A');
+							
+							String teamName = dis.readUTF();
+							System.out.println("teamName= " + teamName);  							
+							int ind=0;
+							for(;ind<board.size();ind++)
+							{
+								if(board.elementAt(ind).teamName==teamName)
+									break;
+							}
+							
+							if(ind==board.size())
+							{
+								dos.writeUTF("Invalid Team Name, contact admin for support.");
+								dos.writeInt(Time);
+								skt.close();
+								continue;
+							}
+							
+							byte [] bytearray  = new byte [filesize];
+						    InputStream is = skt.getInputStream();
+
+						    String path = PATH + teamName + "\\Problem " + String.valueOf(((char)(code+'A')) + "\\Code" + String.valueOf(board.elementAt(ind).totalAttempt[++code]));
+							FileOutputStream fos = new FileOutputStream("AbhinavAggarwal" + ".cpp");
+						    
+							BufferedOutputStream bos = new BufferedOutputStream(fos);
+						    bytesRead = is.read(bytearray,0,bytearray.length);
+						    
+						    currentTot = bytesRead;
+
+						    do {
+						       bytesRead =
+						          is.read(bytearray, currentTot, (bytearray.length-currentTot));
+						       if(bytesRead >= 0) currentTot += bytesRead;
+						    } while(bytesRead > -1);
+
+						    System.out.println("Buffer Saved! ");
+						    
+						    bos.write(bytearray, 0 , currentTot);
+						    
+						    System.out.println("Data Written! ");
+						    
+						    bos.flush();
+						    
+						    System.out.println("Data Flushed! ");
+						    
+						    bos.close();
+						    fos.close();
+
+							dos.writeUTF("Accepted");
+						    dos.writeInt(Time);
+							continue;*/ //M1 over
+/*							ProcessBuilder pb = new ProcessBuilder("g++ " + "-o " + path + ".exe " + path + ".cpp");
+							pb.directory(new File("C:\\MinGW\\bin"));
+							pb.redirectErrorStream(true);
+							
+							Process process = pb.start();
+							InputStream stderr = process.getInputStream();
+						    InputStreamReader isr = new InputStreamReader(stderr);
+						    BufferedReader br = new BufferedReader(isr);
+						    String line = "";
+		
+						    while ((line = br.readLine()) != null) {
+						    
+						    	dos.writeUTF("Compilation Error");
+						    	dos.writeInt(Time);						    	
+						    	board.elementAt(ind).attempt[code]++;
+						    	board.elementAt(ind).totalAttempt[code]++;
+						    	skt.close();
+						    	continue;
+						    }
+						    
+						    process.waitFor();
+						    
+						    dos.writeUTF("Accepted");
+						    dos.writeInt(Time);
+						    continue;
+						}
+					else
+					{
+						dos.writeUTF("Error in Question Code");
+						dos.writeInt(Time);
+						skt.close();
+						continue;
 					}
-				else
-				{
-					//TODO 		return errormessage;
-				}
-				submitSolution.close();  
-	*/
-			}catch(Exception e){
+					submitSolution.close();  
+	*/	
+					
+				}catch(Exception e){
 				e.printStackTrace();
 			}  
 			
 		}  
+		} catch (NumberFormatException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}  
 	}
+
 	/**
 	 * Create the application.
 	 * @wbp.parser.entryPoint
@@ -685,7 +936,7 @@ public class ServerGUI {
 		
 		PaneCreateLogin.setRowHeaderView(btnSave);
 		
-		String[] items = {PROBLEMA,PROBLEMB,PROBLEMC,PROBLEMD,PROBLEME,PROBLEMF,PROBLEMG};
+//		String[] items = {PROBLEMA,PROBLEMB,PROBLEMC,PROBLEMD,PROBLEME,PROBLEMF,PROBLEMG};
 		
 //		JFileChooser Input;
 		Input = new JFileChooser();
@@ -981,7 +1232,7 @@ public class ServerGUI {
 		menuBar.add(file);
 		
 //		JMenuItem close;
-		addTime = new JTextField();
+		addTime = new JTextField("0");
 		edit = new JMenuItem("Configeration");
 		edit.addActionListener(new ActionListener(){
 	        
@@ -995,7 +1246,11 @@ public class ServerGUI {
 				};
 				
 				JOptionPane.showConfirmDialog(null, message, "Configeration", JOptionPane.OK_CANCEL_OPTION);
+				try{
 				Time=Time+Integer.parseInt(addTime.getText());
+				}catch(Exception e1){
+					e1.printStackTrace();
+				}
 	        }
 		});
 		file.add(edit);
@@ -1006,8 +1261,11 @@ public class ServerGUI {
 		menuBar.add(lblTimeRemaining);
 		
 		IPServer = new JTextField();
-		PortServerSubmit = new JTextField();		
+		IPServer.setText("127.0.0.1");
+		PortServerSubmit = new JTextField();
+		PortServerSubmit.setText("5000");
 		PortServerProblem = new JTextField();	
+		PortServerProblem.setText("6000");
 		
 		ProbName = new String[7];
 		ProbDesc = new String[7];
@@ -1018,8 +1276,56 @@ public class ServerGUI {
 		Constraints = new String[7];
 		RulesStr = new String();
 
+		for(int i=0;i<7;i++)
+		{
+			ProbName[i] = " ";
+			ProbDesc[i] = " ";
+			InputFormat[i] = " ";
+			OutputFormat[i] = " ";
+			SampleInput[i] = " ";
+			SampleOutput[i] = " ";
+			Constraints[i] = " ";
+			RulesStr = " ";
+		}
+		
 		Time = new Integer(MAX_TIME);		
 
+		Thread startTime= new Thread(new Runnable() {
+			public void run() {
+				try {
+	 					reduceTime();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		startTime.start();
+
+		Thread startSubmit= new Thread(new Runnable() {
+			public void run() {
+				try {
+	 				acceptSolutions();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		startSubmit.start();
+		
+		Thread startProblems= new Thread(new Runnable() {
+			public void run() {
+				try {
+	 				giveProblemSet();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		startProblems.start();
+		
 		displayLogin();
 	}	
 	/**
@@ -1272,7 +1578,7 @@ public class ServerGUI {
 
 	private boolean checkValidLogin(String text, char[] password2) {
 
-		if(text.equals("Abhinav") && java.util.Arrays.equals(password2, "Abhi".toCharArray()))
+		if(text.equals("") && java.util.Arrays.equals(password2, "".toCharArray()))
 			return true;
 		else
 			return false;	
@@ -1322,8 +1628,8 @@ public class ServerGUI {
 			if(board.size()==0)
 			{
 				tableData row = new tableData();
-				row.Password = "Abhinav";
-				row.teamName = "Admin";
+				row.Password = "";
+				row.teamName = "";
 				row.category = 2;
 				
 				board.addElement(row);
@@ -1347,14 +1653,7 @@ public class ServerGUI {
 				board.addElement(new tableData());
 				board.addElement(new tableData());
 				board.addElement(new tableData());
-				board.addElement(new tableData());
-				board.addElement(new tableData());
-				board.addElement(new tableData());
-				board.addElement(new tableData());
-				board.addElement(new tableData());
-				board.addElement(new tableData());
-				board.addElement(new tableData());
-				board.addElement(new tableData());
+
 				
 			}
 		
