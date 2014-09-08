@@ -703,7 +703,7 @@ public class ClientGUI {
 						"Port Number Problems:", PortServerProblem
 				};
 				
-				JOptionPane.showConfirmDialog(null, message, "Configeration", JOptionPane.OK_CANCEL_OPTION);
+				JOptionPane.showConfirmDialog(null, message, "Configeration", JOptionPane.PLAIN_MESSAGE);
 	        }
 		});
 		file.add(edit);
@@ -845,7 +845,7 @@ public class ClientGUI {
 	         out.writeUTF(text);
 	         out.writeUTF(password);
 	         
- 	     	 JOptionPane.showMessageDialog(null, in.readUTF(), "Message", JOptionPane.OK_OPTION);
+ 	     	 JOptionPane.showMessageDialog(null, in.readUTF(), "Message", JOptionPane.PLAIN_MESSAGE);
  	     	 boolean status = in.readBoolean();
  	     	 
  	     	 client.close();
@@ -958,7 +958,7 @@ public class ClientGUI {
 			  e.printStackTrace();
 		  }
 
-			JOptionPane.showMessageDialog(null, "Submitted!", "Submission Result", JOptionPane.OK_OPTION);		  
+			JOptionPane.showMessageDialog(null, "Submitted!", "Submission Result", JOptionPane.PLAIN_MESSAGE);		  
 	}
 
 	protected void browseFile() {

@@ -1,4 +1,10 @@
 package org.eclipse.wb.swing;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.awt.EventQueue;
 
 import javax.swing.JFrame;
@@ -47,6 +53,9 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
@@ -145,7 +154,9 @@ public class ServerGUI {
 	
 	
 	final static int MAX_TIME = 3600*3;
-	final static String PATH = "E:\\Bytes2014\\Submissions\\";
+	final static String PATH = "E:" + File.separator + "Bytes2014" + File.separator + "Submissions";
+	final static String INPUTPATH = "E:\\Bytes2014\\Inputs\\";
+	final static String OUTPUTPATH = "E:\\Bytes2014\\Outputs\\";
 	final static String TEAMNAME = "Team Name";
 	final static String CATEGORY = "Category";
 	final static String TIME = "Time";
@@ -238,6 +249,7 @@ public class ServerGUI {
 	private static boolean isStarted;
 	private JButton button;
 	private static JLabel lblTimeRemaining;
+	private static int TotTime;
 	/**
 	 * @wbp.nonvisual location=112,399
 	 */
@@ -251,14 +263,14 @@ public class ServerGUI {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-			        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-					ServerGUI window = new ServerGUI();
-					window.frame.setVisible(true);
+				        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+						ServerGUI window = new ServerGUI();
+						window.frame.setVisible(true);
+
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-			}
-			
+			}	
 		});
 	}
 
@@ -434,7 +446,7 @@ public class ServerGUI {
 	            	{
 	            		if(board.elementAt(i).teamName.equals(User) && board.elementAt(i).Password.equals(Pwd))
 	            		{
-	            			out.writeUTF("Successful Login");
+	            			out.writeUTF("Successful Login!");
 	            			out.writeBoolean(true);
 	                		server.close();
 	                		flag=1;
@@ -487,7 +499,7 @@ public class ServerGUI {
 					String str=(String)dis.readUTF();  
 					System.out.println("message= " + str);  
 
-					int code;
+					final int code;
 					
 					if(str.length()>=2)
 						if(str.charAt(0)=='S')
@@ -502,20 +514,32 @@ public class ServerGUI {
 								if(board.elementAt(ind).teamName.equals(teamName))
 									break;
 							}								
-
+							
+							final int ind_cpy = ind;
+							
+						    board.elementAt(ind).totalAttempt[code]=board.elementAt(ind).totalAttempt[code]+1;
+							
 							System.out.println(String.valueOf(ind) + ":" + String.valueOf(board.size()));  							
 						    String path = PATH + teamName + "\\Problem " + String.valueOf(((char)(code+'A')));
-						    String path1 = path + "\\Code" + String.valueOf(board.elementAt(ind).totalAttempt[code]);
-						   
-						    board.elementAt(ind).totalAttempt[code]=board.elementAt(ind).totalAttempt[code]+1;
+						    final String path1 = path + "\\Code" + String.valueOf(board.elementAt(ind).totalAttempt[code]);
+						    final String inputPath1 = INPUTPATH + "\\Problem " + String.valueOf(((char)(code+'A'))) ;
+						    String outputPath1 = OUTPUTPATH + "\\Problem " + String.valueOf(((char)(code+'A'))) ;
+
 						    
 						    File transferPath = new File(path);
 						    File transferFile = new File(path1 + ".cpp");
+						    File inputPath = new File(inputPath1);
+						    File outputPath = new File(outputPath1);
+						    File outputFile = new File(outputPath1 + "\\Output.cpp");
+
 						    
 						    transferPath.mkdirs();
 						    transferFile.createNewFile(); 
-
-							FileOutputStream fos = new FileOutputStream(transferFile);
+						    
+						    inputPath.mkdirs();
+						    outputPath.mkdirs();
+						    
+						    FileOutputStream fos = new FileOutputStream(transferFile);
 							int res = IOUtils.copy(dis, fos);
 						    fos.close();
 						
@@ -526,6 +550,7 @@ public class ServerGUI {
 							{
 						    	//TODO add data
 						    	socket.close();
+						    	
 								continue;
 							}
  
@@ -534,208 +559,88 @@ public class ServerGUI {
 						    dos.close();
 							socket.close();
 						    
-						    continue;
-						}
-					
-					
-					/*					    Socket socket = null;
-					    InputStream is = null;
-					    FileOutputStream fos = null;
-					    BufferedOutputStream bos = null;
-					    int bufferSize = 0;
-						
-					    try {
-					    	
-					        socket = submitSolution.accept();
-					    } catch (IOException ex) {
-					        System.out.println("Can't accept client connection. ");
-					    }
-
-					    try {
-					        is = socket.getInputStream();
-
-					    } catch (IOException ex) {
-					        System.out.println("Can't get socket input stream. ");
-					    }
-
-					    DataInputStream dis = new DataInputStream(socket.getInputStream());
-					    DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-					    						
-						String str=(String)dis.readUTF();  
-						System.out.println("message= " + str);  
-
-						int code;
-						
-						if(str.length()>=2)
-							if(str.charAt(0)=='S')
-							{
-								code = (Integer) (str.charAt(1)-'A');
-								
-								String teamName = dis.readUTF();
-								System.out.println("teamName= " + teamName);  							
-								int ind=0;
-								for(;ind<board.size();ind++)
-								{
-									if(board.elementAt(ind).teamName.equals(teamName))
-										break;
-								}								
-								System.out.println(String.valueOf(ind) + ":" + String.valueOf(board.size()));  							
-							    try {
-							    	
-							        bufferSize = socket.getReceiveBufferSize();
-							        System.out.println("Buffer size: " + bufferSize);
-							        fos = new FileOutputStream("E:\\abc.cpp");
-							        bos = new BufferedOutputStream(fos);
-		
-							    } catch (FileNotFoundException ex) {
-							        System.out.println("File not found. ");
-							    }
-
-					    byte[] bytes = new byte[bufferSize];
-
-					    int count;
-
-					    while ((count = is.read(bytes)) > 0) {
-					        bos.write(bytes, 0, count);
-					    }
-					    bos.flush();
-					    bos.close();
-					    fos.close();
-					    				    
-					    System.out.println("Data Written! ");
-					    
-					    
-					    System.out.println("Data Flushed! ");
-					  
-						if(ind==board.size())
-						{
-							dos.writeUTF("Invalid Team Name, contact admin for support.");
-							dos.writeInt(Time);
-
-							is.close();
-							dis.close();
-							bos.close();
-						    fos.close();
-						    dos.close();
-						    socket.close();
-						    
-							continue;
-						}
-
-						dos.writeUTF("Accepted");
-					    dos.writeInt(Time);
-					    
-					    is.close();
-					    dis.close();
-					    dos.close();
-					    socket.close();
-					    continue;
-					}*/
-/*				    int filesize=1000000; 
-				    int bytesRead;
-				    int currentTot = 0;					
-					
-					DataInputStream dis = new DataInputStream(skt.getInputStream());
-		
-					String str=(String)dis.readUTF();  
-					System.out.println("message= " + str);  
-		
-					DataOutputStream dos = new DataOutputStream(skt.getOutputStream());
-					
-					int code = 0;
-				  
-					
-					if(str.length()>=2)
-						if(str.charAt(0)=='S')
-						{
-							code = (Integer) (str.charAt(1)-'A');
-							
-							String teamName = dis.readUTF();
-							System.out.println("teamName= " + teamName);  							
-							int ind=0;
-							for(;ind<board.size();ind++)
-							{
-								if(board.elementAt(ind).teamName==teamName)
-									break;
-							}
-							
-							if(ind==board.size())
-							{
-								dos.writeUTF("Invalid Team Name, contact admin for support.");
-								dos.writeInt(Time);
-								skt.close();
-								continue;
-							}
-							
-							byte [] bytearray  = new byte [filesize];
-						    InputStream is = skt.getInputStream();
-
-						    String path = PATH + teamName + "\\Problem " + String.valueOf(((char)(code+'A')) + "\\Code" + String.valueOf(board.elementAt(ind).totalAttempt[++code]));
-							FileOutputStream fos = new FileOutputStream("AbhinavAggarwal" + ".cpp");
-						    
-							BufferedOutputStream bos = new BufferedOutputStream(fos);
-						    bytesRead = is.read(bytearray,0,bytearray.length);
-						    
-						    currentTot = bytesRead;
-
-						    do {
-						       bytesRead =
-						          is.read(bytearray, currentTot, (bytearray.length-currentTot));
-						       if(bytesRead >= 0) currentTot += bytesRead;
-						    } while(bytesRead > -1);
-
-						    System.out.println("Buffer Saved! ");
-						    
-						    bos.write(bytearray, 0 , currentTot);
-						    
-						    System.out.println("Data Written! ");
-						    
-						    bos.flush();
-						    
-						    System.out.println("Data Flushed! ");
-						    
-						    bos.close();
-						    fos.close();
-
-							dos.writeUTF("Accepted");
-						    dos.writeInt(Time);
-							continue;*/ //M1 over
-/*							ProcessBuilder pb = new ProcessBuilder("g++ " + "-o " + path + ".exe " + path + ".cpp");
-							pb.directory(new File("C:\\MinGW\\bin"));
-							pb.redirectErrorStream(true);
-							
-							Process process = pb.start();
+							Process process = Runtime.getRuntime().exec( "cmd /c cd C:"+ File.separator + "MinGW" + File.separator + "bin && g++ " + "-o " + path1 + ".exe " + path1 + ".cpp");
 							InputStream stderr = process.getInputStream();
 						    InputStreamReader isr = new InputStreamReader(stderr);
 						    BufferedReader br = new BufferedReader(isr);
 						    String line = "";
-		
+
 						    while ((line = br.readLine()) != null) {
 						    
-						    	dos.writeUTF("Compilation Error");
-						    	dos.writeInt(Time);						    	
+						    	//dos.writeUTF("Compilation Error");
+						    	//dos.writeInt(Time);						    	
 						    	board.elementAt(ind).attempt[code]++;
-						    	board.elementAt(ind).totalAttempt[code]++;
-						    	skt.close();
+						    
+						    	//Compilation Error
+						    	
 						    	continue;
 						    }
 						    
 						    process.waitFor();
+
+						    class Task implements Callable<String>{
+						        @Override
+						        public String call() throws Exception {
+
+//						        	ProcessBuilder pb = new ProcessBuilder("\"" + path1 + ".exe\" < \"" + inputPath1 + "Input.cpp\" > \"" + path1 + ".txt\"");
+//						    		pb.redirectErrorStream(true);
+
+//						    		Process process = pb.start();
+
+						        	Process process = Runtime.getRuntime().exec( "cmd /c cd C:"+ File.separator + "MinGW" + File.separator + "bin && \"" + path1 + ".exe\" < \"" + inputPath1 + "\\Input.txt\" > \"" + path1 + ".txt\"");
+						        	
+						        	InputStream stderr = process.getInputStream();
+						    	    InputStreamReader isr = new InputStreamReader(stderr);
+						    	    BufferedReader br = new BufferedReader(isr);
+						    	    String line = "";
+
+						    	    while ((line = br.readLine()) != null) {
+						    	    	board.elementAt(ind_cpy).attempt[code]++;
+
+						    	    	//Runtime error
+						    	    }
+						    	    return "";
+						        }
+						    }
+					        
 						    
-						    dos.writeUTF("Accepted");
-						    dos.writeInt(Time);
+						    ExecutorService executor = Executors.newSingleThreadExecutor();
+					        Future<String> future = executor.submit(new Task());
+
+					        try {
+					            System.out.println("Started..");
+					            System.out.println(future.get(505, TimeUnit.MILLISECONDS));
+					            System.out.println("Finished!");
+					        } catch (TimeoutException e) {
+					            System.out.println("Terminated!");
+				    	    	
+					            board.elementAt(ind).attempt[code]++;
+				    	    	board.elementAt(ind).totalAttempt[code]++;
+				    	    	
+				    	    	//TLE
+					        }
+
+					        executor.shutdownNow();
+					        
+					        if(CompareFile("\"" + path1 + ".txt\"","\"" + outputPath1 + "\\Output.cpp \""))
+					        {
+					        	if(board.elementAt(ind).score[code]==0)
+					        	{
+					        		board.elementAt(ind).score[code]=TotTime-Time + 1200 * board.elementAt(ind).attempt[code];
+					        		board.elementAt(ind).successful++;
+					        		board.elementAt(ind).time+=board.elementAt(ind).score[code];
+					        		
+					        		//Accepted
+					        	}
+					        	
+					        	else
+					        	{
+					    	    	board.elementAt(ind).attempt[code]++;
+					        		//WA
+					        	}
+					        }
 						    continue;
 						}
-					else
-					{
-						dos.writeUTF("Error in Question Code");
-						dos.writeInt(Time);
-						skt.close();
-						continue;
-					}
-					submitSolution.close();  
-	*/	
-					
 				}catch(Exception e){
 				e.printStackTrace();
 			}  
@@ -749,6 +654,12 @@ public class ServerGUI {
 			e1.printStackTrace();
 		}  
 	}
+
+	private static boolean CompareFile(String string, String string2) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
 
 	/**
 	 * Create the application.
@@ -1248,6 +1159,7 @@ public class ServerGUI {
 				JOptionPane.showConfirmDialog(null, message, "Configeration", JOptionPane.OK_CANCEL_OPTION);
 				try{
 				Time=Time+Integer.parseInt(addTime.getText());
+				TotTime= TotTime + Integer.parseInt(addTime.getText());
 				}catch(Exception e1){
 					e1.printStackTrace();
 				}
@@ -1288,7 +1200,8 @@ public class ServerGUI {
 			RulesStr = " ";
 		}
 		
-		Time = new Integer(MAX_TIME);		
+		Time = new Integer(MAX_TIME);
+		TotTime = new Integer(MAX_TIME);
 
 		Thread startTime= new Thread(new Runnable() {
 			public void run() {
@@ -1797,3 +1710,4 @@ public class ServerGUI {
 		});
 	}
 }
+
